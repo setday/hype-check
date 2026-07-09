@@ -1,0 +1,78 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# TEMPLATE ROOT CONFIG
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# This is the main Hydra config. The `defaults` list composes sub-configs from
+# config/{model, datasets, metrics, dataloaders, training_pipeline}/.
+#
+# To adapt this template to your task:
+#   1. Update the `defaults` list to point at your configs
+#   2. Adjust `global_setings.optimizer` and `global_setings.scheduler`
+#   3. Update `trainer` for your hardware / training budget
+#
+# Override from CLI:
+#   python train.py trainer.max_epochs=5 global_setings.seed=99
+#   python train.py model=my_model datasets=my_dataset
+# ═══════════════════════════════════════════════════════════════════════════
+
+defaults:
+  - model: template              # → config/model/template.yaml
+  - datasets: template           # → config/datasets/template.yaml
+  - metrics: template            # → config/metrics/template.yaml
+  - dataloaders: template        # → config/dataloaders/template.yaml
+  - training_pipeline: base      # → config/training_pipeline/base.yaml
+  - _self_
+
+# ── Global experiment settings ─────────────────────────────────────────────
+global_setings:
+  seed: 42
+  resume_from: null              # Path to checkpoint for resuming
+  save_dir: "./saved/experiment"
+  override: true                 # Overwrite save_dir if it exists
+  model_transforms: []           # Optional weight init / model surgery
+
+  monitor_metric: "val_accuracy"
+  monitor_mode: "max"            # "min" for loss-based metrics
+
+  # Optimizer — instantiated via hydra.utils.instantiate
+  optimizer:
+    _target_: torch.optim.AdamW
+    lr: 0.001
+    weight_decay: 0.0
+
+  # LR Scheduler — instantiated after optimizer
+  scheduler:
+    _target_: torch.optim.lr_scheduler.StepLR
+    step_size: 30
+    gamma: 0.1
+
+# ── Trainer ────────────────────────────────────────────────────────────────
+trainer:
+  _target_: lightning.Trainer
+  accelerator: auto
+  precision: 16-mixed
+  max_epochs: 10
+  limit_train_batches: 50
+  log_every_n_steps: 10
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+  check_val_every_n_epoch: 2
+  fast_dev_run: false
+  deterministic: true
+  benchmark: false
+
+  logger:
+    - _target_: lightning.pytorch.loggers.TensorBoardLogger
+      save_dir: "${global_setings.save_dir}"
+      name: "logs"
+
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      monitor: ${global_setings.monitor_metric}
+      mode: ${global_setings.monitor_mode}
+      save_top_k: 1
+      dirpath: ${global_setings.save_dir}
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: ${global_setings.monitor_metric}
+      mode: ${global_setings.monitor_mode}
+      patience: 5

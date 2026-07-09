@@ -1,0 +1,12 @@
+train:
+  - _target_: src.metrics.template_metrics.AccuracyMetric
+    name: "accuracy"
+    top_k: 1
+
+inference:
+  - _target_: src.metrics.template_metrics.AccuracyMetric
+    name: "accuracy"
+    top_k: 1
+  - _target_: src.metrics.template_metrics.AccuracyMetric
+    name: "top3_accuracy"
+    top_k: 3
