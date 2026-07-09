@@ -1,0 +1,7 @@
+_target_: src.models.uplift_model.SLearnerWrapper
+params:
+  n_estimators: 100
+  max_depth: 5
+  learning_rate: 0.1
+  subsample: 0.8
+  random_state: 42

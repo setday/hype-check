@@ -220,3 +220,15 @@ cache/
 outputs/
 saved/
 wandb/
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Research project data and results
+# ═══════════════════════════════════════════════════════════════════════════
+data/raw/
+results/
+logs/
+experiments/
+*.csv
+*.json
+*.pkl
+*.h5

@@ -1,0 +1,28 @@
+train:
+  _target_: src.metrics.uplift_metrics.QiniMetric
+  name: qini
+
+val:
+  - _target_: src.metrics.uplift_metrics.QiniMetric
+    name: qini
+  - _target_: src.metrics.uplift_metrics.AUUCMetric
+    name: auuc
+  - _target_: src.metrics.uplift_metrics.UpliftAtKMetric
+    k: 0.3
+    name: uplift@30
+  - _target_: src.metrics.uplift_metrics.UpliftAtKMetric
+    k: 0.1
+    name: uplift@10
+  - _target_: src.metrics.uplift_metrics.PEHEMetric
+    name: pehe
+
+inference:
+  - _target_: src.metrics.uplift_metrics.QiniMetric
+    name: qini
+  - _target_: src.metrics.uplift_metrics.AUUCMetric
+    name: auuc
+  - _target_: src.metrics.uplift_metrics.UpliftAtKMetric
+    k: 0.3
+    name: uplift@30
+  - _target_: src.metrics.uplift_metrics.RankingCorrelationMetric
+    name: ranking_correlation

@@ -1,0 +1,17 @@
+train:
+  _target_: src.datasets.uplift_dataset.UpliftDataset
+  index: ${oc.env:HILLSTROM_TRAIN_INDEX}  # Loaded at runtime
+  limit: null
+  shuffle_index: true
+
+val:
+  _target_: src.datasets.uplift_dataset.UpliftDataset
+  index: ${oc.env:HILLSTROM_VAL_INDEX}  # Loaded at runtime
+  limit: null
+  shuffle_index: false
+
+test:
+  _target_: src.datasets.uplift_dataset.UpliftDataset
+  index: ${oc.env:HILLSTROM_TEST_INDEX}  # Loaded at runtime
+  limit: null
+  shuffle_index: false
