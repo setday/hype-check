@@ -1,111 +1,88 @@
-# ML Project Template
+# Hypecheck
 
-A config-driven ML project template built with **Hydra** + **PyTorch Lightning** + **torchmetrics**.
+---
 
-Supports rapid prototyping and experimentation through modular component design: swap datasets, models, metrics, and pipelines by editing YAML configs — no code changes needed.
+Challenging Causal Foundation Models for Uplift 
 
-## Quickstart
+## Description
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+This project examines the reliability of causal foundation models for uplift models. CausalPFN produces training-free estimates of the conditional average treatment effect (CATE), yet uplift modeling is a ranking problem, and accurate CATE estimation does not guarantee that individuals are correctly ordered by their incremental effect. We assess whether an untuned CausalPFN matches tuned learners on the Qini metric, characterize the regimes in which this advantage degrades, and introduce CausalPFN-Rank, a training-free adaptation that combines context selection with output re-ranking to recover the targeting performance lost in those regimes. Evaluation is carried out on real-world marketing randomized controlled trials.	We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate whether an untuned CausalPFN matches tuned uplift learners on Qini, and map the regimes where this advantage fails. We will then develop our own model, levereging best of the studied approaches. 
 
-# Run the template example (synthetic data + MLP classifier)
-python train.py
-```
+## Scope
 
-**Override settings from CLI** (Hydra):
-```bash
-python train.py trainer.max_epochs=3 trainer.fast_dev_run=true
-python train.py model=my_model datasets=my_dataset
-```
+Uplift is a well-known ranking and policy decision task based on effect estimation (in comparison to the classic ML which just predicts single outcome). We investigate whether a ready-to-use causal foundation model (CausalPFN: [paper](https://arxiv.org/abs/2506.07918), [github](https://github.com/vdblm/CausalPFN/)) helps real targeting in three steps:
 
-## Architecture
+- Check: untuned causal foundation models vs strong tuned baselines on the ranking metrics;
 
-```
-train.py              → Single training entrypoint (Hydra + Lightning)
-config/
-  train.yaml           → Root config (defaults list composes sub-configs)
-  model/               → Model hyperparameters
-  datasets/            → Dataset configurations
-  metrics/             → Metric configurations
-  dataloaders/         → DataLoader configurations
-  training_pipeline/   → LightningModule pipeline config
-src/
-  datasets/            → BaseDataset + template implementations
-  models/              → AbstractModel + template implementations
-  pipelines/           → BasePipeline (LightningModule training loop)
-  metrics/             → BaseMetric + template implementations
-  logger/              → Logging setup
-  utils/               → Experiment init, I/O utilities
-```
+- Break: map the regimes where foundation models advantages disappear;
 
-## How to Adapt for Your Task
+- Fix: develop a CausalPFN-Rank, a training-free adaptation of the studied foundation models (smart context + output re-ranking).
 
-The template ships with a working synthetic-data example (`TemplateDataset` → `TemplateMLP` → `AccuracyMetric`). Replace each component step by step:
+> [!NOTE]
+> `Why this is practically interesting?`
+>
+> 1. In business context uplift is judged by ranking (e.g., Qini, uplift@k, AUUC), but CausalPFN is tuned for effect error metrics -- we expect that the best estimator is not the best ranking model.
+> 
+> 1. Practical insights regarding when an untuned foundation model is enough vs the tuned one / specialized method / untuned + cheap fix.
 
-### 1. Create your dataset
 
-See `src/datasets/template_dataset.py` for a complete annotated example:
-- Subclass `BaseDataset`
-- Build `self._index` as a `list[dict]` in `__init__`
-- Each dict's keys must match your `collate_fn` and model
+## Main goal
 
-### 2. Create your model
+We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate whether an untuned CausalPFN matches tuned uplift learners on Qini, and map the regimes where this advantage fails. We will then develop our own model, levereging best of the studied approaches. 
 
-See `src/models/template_model.py`:
-- Subclass `AbstractModel`
-- Implement `calculate_loss(batch) → Tensor`
-- Implement `forward(**batch) → dict`
+## Plan
 
-### 3. Define your metrics
+### Hypotheses
 
-See `src/metrics/template_metrics.py`:
-- Subclass `BaseMetric` (which extends `torchmetrics.Metric`)
-- Implement `update(**batch)` and `compute()`
+[ ] H1  Untuned, CausalPFN matches tuned non-foundation learners on semi-synthetic accuracy (PEHE) but not on real targeting (Qini)
 
-### 4. Wire it up in config
+[ ] H2  Ranking by accuracy correlates weakly with ranking by targeting value; the best estimator is often not the best targeter
 
-Add your configs to `config/model/`, `config/datasets/`, `config/metrics/`, then update the `defaults` list in `config/train.yaml`.
+[ ] H3  The advantage breaks in three regimes: data beyond the context window, a small control group, and low conversion
 
-## Key Features
+[ ] H4  Engineered context (treatment-balanced selection plus multi-context averaging) recovers much of the lost targeting value, with no training
 
-- **Hydra config composition** — modular YAML files, CLI overrides, nested configs
-- **Lightning training** — `training_step`/`validation_step`/`configure_optimizers` in `BasePipeline`
-- **Abstract interfaces** — `BaseDataset`, `AbstractModel`, `BaseMetric` for extensibility
-- **Reproducible experiments** — seed setting, config dumps, checkpointing
-- **Batch transforms** — GPU-side data augmentation via `on_after_batch_transfer`
-- **W&B / TensorBoard** — swappable loggers via config
+[ ] H5  Re-ranking the outputs improves targeting even when accuracy is unchanged, narrowing the gap to specialist methods
 
-## Requirements
+### Sub goals
 
-- Python 3.10+
-- CUDA/cuDNN for GPU training (optional, auto-detected)
+[ ] G1: reproducible uplift results over the dataset pool; reproduce CausalPFN's Hillstrom example as a smoke test;
 
-## Repository Structure
+[ ] G2: map the break-axes by controlled subsampling, with bootstrap CIs and the accuracy-vs-targeting correlation;
 
-```
-├── train.py                   # Single training entry point
-├── config/
-│   ├── train.yaml             # Root Hydra config
-│   ├── model/                 # Model configs
-│   ├── datasets/              # Dataset configs
-│   ├── metrics/               # Metric configs
-│   ├── dataloaders/           # DataLoader configs
-│   └── training_pipeline/     # Pipeline configs
-└── src/
-    ├── datasets/              # BaseDataset + custom datasets
-    ├── models/                # AbstractModel + custom models
-    ├── pipelines/             # BasePipeline (LightningModule)
-    ├── metrics/               # BaseMetric + custom metrics
-    ├── logger/                # Logging infrastructure
-    └── utils/                 # Experiment setup, I/O utilities
-```
+[ ] G3: build and ablate CausalPFN-Rank; report per- regime recovery and compute cost.
 
-## Contributing
+### Tasks
 
-PRs, issues, and experiments are welcome. For substantial changes, open an issue first to discuss design.
+[ ] W1: harness, smoke test, baselines, first untuned comparison;
 
-## License
+[ ] W2: break-axis mapping; add Q-Learner and GP-CATE;
 
-MIT — see `LICENSE`.
+[ ] W3: implement and ablate CausalPFN-Rank;
+
+[ ] W4: final runs with CIs and efficiency; write-up.
+
+## Notes
+
+> [!NOTE]
+> `CausalPFN-Rank (frozen model, no training)`
+>
+> - Input: treatment-balanced context and averaging over several retrieved contexts, vs the model's own default retrieval;
+>
+> - Output: re-rank the scores, a calibrator trained for ordering, a cautious lower-bound score, and a ratio score for low conversion.
+
+> [!NOTE]
+> `Baselines, data, metrics`
+>
+> - Baselines: S/T/X/DR on boosting, Causal Forest, BCF, DragonNet/DESCN; Q-Learner and GP-CATE on their regimes;
+>
+> - Data*: [Criteo](https://ailab.criteo.com/criteo-uplift-prediction-dataset/) / [X5](https://www.uplift-modeling.com/en/v0.4.1/api/datasets/fetch_x5.html) and [Hillstrom](https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html) (real RCT); [IHDP](https://github.com/AMLab-Amsterdam/CEVAE) / [ACIC](https://github.com/BiomedSciAI/causallib/tree/master/causallib/datasets/data/acic_challenge_2016) (semi-synthetic);
+>
+> - Metrics: Qini/AUUC and uplift@k with bootstrap CIs; PEHE where ground truth exists; efficiency reported separately.
+
+## Materials
+
+https://arxiv.org/abs/2506.07918
+https://arxiv.org/abs/2410.07021v1
+https://arxiv.org/abs/2605.26288
+https://arxiv.org/abs/2605.27473
