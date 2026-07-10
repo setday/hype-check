@@ -1,7 +1,5 @@
 # Hypecheck
 
----
-
 Challenging Causal Foundation Models for Uplift 
 
 ## Description
