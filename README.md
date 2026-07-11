@@ -89,6 +89,7 @@ python scripts/smoke_test.py --dataset hillstrom --models s_learner,causalpfn
 ```
 
 Results (`metrics.csv`, `metrics.md`, `qini_*.png`) are written to `--outdir` (default `results/`).
+Precomputed W1 results (`results/`, `results_with_pfn/`) are on [Google Drive](https://drive.google.com/drive/folders/1RJrAvz2cbam-1YAwcigFabHDDnAXwPFl?usp=sharing).
 
 ## Materials
 
