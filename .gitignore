@@ -225,7 +225,9 @@ wandb/
 # Research project data and results
 # ═══════════════════════════════════════════════════════════════════════════
 data/raw/
+data/cache/
 results/
+results_*/
 logs/
 experiments/
 *.csv

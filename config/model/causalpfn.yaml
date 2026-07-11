@@ -1,4 +1,4 @@
 _target_: src.models.causalpfn_model.CausalPFNModel
-model_name: vdblm/causalpfn-v1
-device: cuda
-batch_size: 32
+device: null
+max_context: 5000
+verbose: false

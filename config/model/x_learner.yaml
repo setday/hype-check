@@ -1,4 +1,4 @@
-_target_: src.models.uplift_model.TLearnerWrapper
+_target_: src.models.uplift_model.XLearnerWrapper
 seed: 42
 params:
   n_estimators: 200

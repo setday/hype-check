@@ -32,7 +32,7 @@ We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate w
 
 ### Hypotheses
 
-[ ] H1  Untuned, CausalPFN matches tuned non-foundation learners on semi-synthetic accuracy (PEHE) but not on real targeting (Qini)
+[~] H1  Untuned, CausalPFN matches tuned non-foundation learners on semi-synthetic accuracy (PEHE) but not on real targeting (Qini) — on strong-signal RCTs it trails tuned learners on Qini
 
 [ ] H2  Ranking by accuracy correlates weakly with ranking by targeting value; the best estimator is often not the best targeter
 
@@ -44,7 +44,7 @@ We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate w
 
 ### Sub goals
 
-[ ] G1: reproducible uplift results over the dataset pool; reproduce CausalPFN's Hillstrom example as a smoke test;
+[~] G1: reproducible uplift results over the dataset pool; reproduce CausalPFN's Hillstrom example as a smoke test; — harness + S/T/X/DR + CausalPFN over all five datasets
 
 [ ] G2: map the break-axes by controlled subsampling, with bootstrap CIs and the accuracy-vs-targeting correlation;
 
@@ -52,7 +52,7 @@ We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate w
 
 ### Tasks
 
-[ ] W1: harness, smoke test, baselines, first untuned comparison;
+[~] W1: harness, smoke test, baselines, first untuned comparison; — `scripts/run_baselines.py`
 
 [ ] W2: break-axis mapping; add Q-Learner and GP-CATE;
 
@@ -77,6 +77,18 @@ We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate w
 > - Data*: [Criteo](https://ailab.criteo.com/criteo-uplift-prediction-dataset/) / [X5](https://www.uplift-modeling.com/en/v0.4.1/api/datasets/fetch_x5.html) and [Hillstrom](https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html) (real RCT); [IHDP](https://github.com/AMLab-Amsterdam/CEVAE) / [ACIC](https://github.com/BiomedSciAI/causallib/tree/master/causallib/datasets/data/acic_challenge_2016) (semi-synthetic);
 >
 > - Metrics: Qini/AUUC and uplift@k with bootstrap CIs; PEHE where ground truth exists; efficiency reported separately.
+
+## Running the experiments
+
+```bash
+export HYPECHECK_DATA_ROOT=/path/to/data_A_cleaned
+
+python scripts/run_baselines.py --datasets all --limit 300000
+python scripts/run_baselines.py --datasets all --with-causalpfn --eval-limit 6000 --outdir results_with_pfn
+python scripts/smoke_test.py --dataset hillstrom --models s_learner,causalpfn
+```
+
+Results (`metrics.csv`, `metrics.md`, `qini_*.png`) are written to `--outdir` (default `results/`).
 
 ## Materials
 

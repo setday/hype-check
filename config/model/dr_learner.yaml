@@ -1,5 +1,6 @@
-_target_: src.models.uplift_model.TLearnerWrapper
+_target_: src.models.uplift_model.DRLearnerWrapper
 seed: 42
+cv: 3
 params:
   n_estimators: 200
   num_leaves: 31

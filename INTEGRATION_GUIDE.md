@@ -139,16 +139,16 @@ This document shows how to integrate new methods, datasets, or metrics into the 
 
 ### W1: Untuned vs. Tuned Comparison
 
+W1 baselines are offline (fit/predict), so they run via the harness, not `train.py`:
+
 ```bash
-# S-Learner on Hillstrom
-python train.py model=s_learner datasets=hillstrom trainer.max_epochs=10
-
-# T-Learner on Hillstrom
-python train.py model=t_learner datasets=hillstrom trainer.max_epochs=10
-
-# CausalPFN (inference only, no training)
-python train.py model=causalpfn datasets=hillstrom trainer.limit_val_batches=1.0
+export HYPECHECK_DATA_ROOT=/path/to/data_A_cleaned
+python scripts/run_baselines.py --datasets all --limit 300000
+python scripts/run_baselines.py --datasets all --with-causalpfn --eval-limit 6000 --outdir results_with_pfn
 ```
+
+Code: `src/eval/runner.py`. The `train.py`/Lightning path stays for
+gradient-trained models (DragonNet/DESCN) in W2+.
 
 ### W2: Regime Mapping
 
