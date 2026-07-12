@@ -562,7 +562,8 @@
 
             <div class="tabs">
                 <button class="tab active" onclick="switchTab(event, 'table-tab')">📋 Table</button>
-                <button class="tab" onclick="switchTab(event, 'comparison-tab')">📊 Comparison</button>
+                <button class="tab" onclick="switchTab(event, 'comparison-tab')">📈 Model Comparison</button>
+                <button class="tab" onclick="switchTab(event, 'distribution-tab')">📊 Distribution</button>
                 <button class="tab" onclick="switchTab(event, 'curves-tab')">📈 Curves</button>
             </div>
 
@@ -582,8 +583,26 @@
                 </div>
             </div>
 
-            <!-- Comparison Tab (Boxplot) -->
+            <!-- Comparison Tab (Model Comparison) -->
             <div id="comparison-tab" class="tab-content">
+                <div class="plot-container">
+                    <h3>Model Comparison</h3>
+                    <div class="control-group" style="max-width: 300px; margin-bottom: 20px;">
+                        <label for="compMetric">Select Metric to Compare</label>
+                        <select id="compMetric" onchange="plotModelComparison()">
+                            <option value="qini">Qini</option>
+                            <option value="auuc">AUUC</option>
+                            <option value="uplift@10">Uplift@10</option>
+                            <option value="uplift@30">Uplift@30</option>
+                            <option value="fit_time_s">Fit Time (s)</option>
+                        </select>
+                    </div>
+                    <div id="comparisonPlot" style="min-height: 500px;"></div>
+                </div>
+            </div>
+
+            <!-- Distribution Tab (Boxplot) -->
+            <div id="distribution-tab" class="tab-content">
                 <div class="plot-container">
                     <h3>Quantile Distribution (Boxplot)</h3>
                     <div class="control-row">
@@ -754,6 +773,8 @@
 
             // Initialize box slice select and plot
             updateBoxSliceSelect();
+            // Plot initial model comparison
+            setTimeout(plotModelComparison, 100);
         }
 
         function updateBoxSliceSelect() {
@@ -984,6 +1005,51 @@
             ).join('');
         }
 
+        function plotModelComparison() {
+            const metric = document.getElementById('compMetric').value;
+
+            if (!metric || !fullData.length) {
+                return;
+            }
+
+            const labels = [];
+            const values = [];
+
+            fullData.forEach(row => {
+                labels.push(`${row.dataset} / ${row.model}`);
+                values.push(row[metric] || 0);
+            });
+
+            const trace = {
+                x: labels,
+                y: values,
+                type: 'bar',
+                marker: {
+                    color: values,
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: { title: metric }
+                }
+            };
+
+            const layout = {
+                title: `Comparison: ${metric} across Models/Datasets`,
+                xaxis: {
+                    title: 'Model / Dataset',
+                    tickangle: -45
+                },
+                yaxis: { title: metric },
+                plot_bgcolor: '#f8fafc',
+                paper_bgcolor: 'white',
+                hovermode: 'x',
+                margin: { l: 80, r: 60, t: 80, b: 180 },
+                font: { family: 'Arial, sans-serif', size: 12, color: '#2c3e50' },
+                height: 600
+            };
+
+            Plotly.newPlot('comparisonPlot', [trace], layout, { responsive: true });
+        }
+
         function plotBoxplot() {
             const metric = document.getElementById('boxMetric').value;
             const sliceType = document.getElementById('boxSliceType').value;
@@ -1206,7 +1272,10 @@
             document.getElementById(tabName).classList.add('active');
 
             if (tabName === 'comparison-tab') {
-                console.log('Switched to comparison tab, plotting boxplot');
+                console.log('Switched to comparison tab, plotting model comparison');
+                plotModelComparison();
+            } else if (tabName === 'distribution-tab') {
+                console.log('Switched to distribution tab, plotting boxplot');
                 plotBoxplot();
             } else if (tabName === 'curves-tab') {
                 console.log('Switched to curves tab, plotting curves');
