@@ -34,7 +34,7 @@ from src.datasets.uplift_data_utils import (
 )
 from src.models.uplift_model import SLearnerWrapper, TLearnerWrapper
 from src.models.causalpfn_model import CausalPFNModel
-from src.metrics.ranking import qini_coefficient
+from metrics.utils import qini_coefficient
 from src.datasets.collate import collate_fn
 
 # Setup logging

@@ -224,13 +224,10 @@ wandb/
 # ═══════════════════════════════════════════════════════════════════════════
 # Research project data and results
 # ═══════════════════════════════════════════════════════════════════════════
-data/raw/
-data/cache/
-results/
+data/
 results_*/
 logs/
 experiments/
-*.csv
 *.json
 *.pkl
 *.h5

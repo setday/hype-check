@@ -1,6 +1,6 @@
-from src.metrics import ranking
+from src.metrics import utils
 
-__all__ = ["ranking"]
+__all__ = ["utils"]
 
 try:  # torchmetrics only needed for the Lightning path
     from src.metrics.template_metrics import AccuracyMetric

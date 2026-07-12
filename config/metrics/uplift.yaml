@@ -13,8 +13,8 @@ val:
   - _target_: src.metrics.uplift_metrics.UpliftAtKMetric
     k: 0.1
     name: uplift@10
-  - _target_: src.metrics.uplift_metrics.PEHEMetric
-    name: pehe
+  # - _target_: src.metrics.uplift_metrics.PEHEMetric
+  #   name: pehe
 
 inference:
   - _target_: src.metrics.uplift_metrics.QiniMetric

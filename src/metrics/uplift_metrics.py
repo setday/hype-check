@@ -6,11 +6,13 @@ Qini coefficient, AUUC, uplift@k, and PEHE with bootstrap confidence intervals.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 import numpy as np
 import torch
 from torchmetrics import Metric
+
+from .utils import compute_qini_coefficient, compute_auuc, compute_uplift_at_k, compute_pehe
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +29,10 @@ class QiniMetric(Metric):
     Reference: Radcliffe & Surry (2011). "Real-World Uplift Modelling with Significance Based Trees"
     """
 
-    def __init__(self, name: str = "qini", **kwargs):
+    def __init__(self, name: str = "qini", normalized: bool = True, **kwargs):
         super().__init__(**kwargs)
         self.name = name
+        self.normalized = normalized
         self.add_state("cate_pred", default=[], dist_reduce_fx="cat")
         self.add_state("outcome", default=[], dist_reduce_fx="cat")
         self.add_state("treatment", default=[], dist_reduce_fx="cat")
@@ -64,33 +67,7 @@ class QiniMetric(Metric):
         outcome = torch.cat(self.outcome).numpy()
         treatment = torch.cat(self.treatment).numpy()
 
-        n = len(cate_pred)
-        sort_idx = np.argsort(-cate_pred)  # Descending order of CATE
-
-        sorted_outcome = outcome[sort_idx]
-        sorted_treatment = treatment[sort_idx]
-
-        # Cumulative response for treatment and control groups
-        cumsum_response_t = np.cumsum(sorted_outcome * sorted_treatment)
-        cumsum_response_c = np.cumsum(sorted_outcome * (1 - sorted_treatment))
-        cumsum_count_t = np.cumsum(sorted_treatment)
-        cumsum_count_c = np.cumsum(1 - sorted_treatment)
-
-        # Avoid division by zero
-        n_t = cumsum_count_t[-1] if cumsum_count_t[-1] > 0 else 1
-        n_c = cumsum_count_c[-1] if cumsum_count_c[-1] > 0 else 1
-
-        response_rate_t = cumsum_response_t / n_t if n_t > 0 else np.zeros_like(cumsum_response_t)
-        response_rate_c = cumsum_response_c / n_c if n_c > 0 else np.zeros_like(cumsum_response_c)
-
-        # Qini curve = difference in response rates
-        qini_curve = response_rate_t - response_rate_c
-
-        # Percentage of population (x-axis)
-        percent_pop = np.arange(1, n + 1) / n
-
-        # Qini = area under Qini curve (trapezoid rule)
-        qini = float(np.trapz(qini_curve, percent_pop))
+        qini = compute_qini_coefficient(cate_pred, outcome, treatment, normalized=self.normalized)
 
         return torch.tensor(qini)
 
@@ -105,9 +82,10 @@ class AUUCMetric(Metric):
     Reference: Radcliffe (2007). "Using the Kölmogorov-Smirnov test to predict treatment outcome"
     """
 
-    def __init__(self, name: str = "auuc", **kwargs):
+    def __init__(self, name: str = "auuc", normalized: bool = True, **kwargs):
         super().__init__(**kwargs)
         self.name = name
+        self.normalized = normalized
         self.add_state("cate_pred", default=[], dist_reduce_fx="cat")
         self.add_state("outcome", default=[], dist_reduce_fx="cat")
         self.add_state("treatment", default=[], dist_reduce_fx="cat")
@@ -134,17 +112,7 @@ class AUUCMetric(Metric):
         outcome = torch.cat(self.outcome).numpy()
         treatment = torch.cat(self.treatment).numpy()
 
-        n = len(cate_pred)
-        sort_idx = np.argsort(-cate_pred)
-
-        sorted_outcome = outcome[sort_idx]
-        sorted_treatment = treatment[sort_idx]
-
-        # Cumulative treatment effect
-        cumsum_te = np.cumsum((sorted_outcome - sorted_outcome.mean()) * (2 * sorted_treatment - 1))
-        percent_pop = np.arange(1, n + 1) / n
-
-        auuc = float(np.trapz(cumsum_te, percent_pop)) / n
+        auuc = compute_auuc(cate_pred, outcome, treatment, normalized=self.normalized)
 
         return torch.tensor(auuc)
 
@@ -190,29 +158,9 @@ class UpliftAtKMetric(Metric):
         cate_pred = torch.cat(self.cate_pred).numpy()
         outcome = torch.cat(self.outcome).numpy()
         treatment = torch.cat(self.treatment).numpy()
+        
+        uplift_at_k = compute_uplift_at_k(cate_pred, outcome, treatment, k=self.k)
 
-        n = len(cate_pred)
-        k_idx = int(n * self.k)
-
-        sort_idx = np.argsort(-cate_pred)
-        top_k_outcome = outcome[sort_idx[:k_idx]]
-        top_k_treatment = treatment[sort_idx[:k_idx]]
-
-        # Response rate in treatment group (top k)
-        n_t_k = top_k_treatment.sum()
-        if n_t_k > 0:
-            response_t_k = (top_k_outcome * top_k_treatment).sum() / n_t_k
-        else:
-            response_t_k = 0.0
-
-        # Response rate in control group (top k)
-        n_c_k = (1 - top_k_treatment).sum()
-        if n_c_k > 0:
-            response_c_k = (top_k_outcome * (1 - top_k_treatment)).sum() / n_c_k
-        else:
-            response_c_k = 0.0
-
-        uplift_at_k = float(response_t_k - response_c_k)
         return torch.tensor(uplift_at_k)
 
 
@@ -250,7 +198,8 @@ class PEHEMetric(Metric):
         cate_pred = torch.cat(self.cate_pred).numpy()
         cate_true = torch.cat(self.cate_true).numpy()
 
-        pehe = float(np.sqrt(np.mean((cate_pred - cate_true) ** 2)))
+        pehe = compute_pehe(cate_pred, cate_true)
+
         return torch.tensor(pehe)
 
 
@@ -304,7 +253,7 @@ class RankingCorrelationMetric(Metric):
 
         # Ranking metric: Qini
         n = len(cate_pred)
-        sort_idx = np.argsort(-cate_pred)
+        sort_idx = np.argsort(cate_pred, kind="mergesort")[::-1]
         sorted_outcome = outcome[sort_idx]
         sorted_treatment = treatment[sort_idx]
 
@@ -321,7 +270,7 @@ class RankingCorrelationMetric(Metric):
 
         qini_curve = response_rate_t - response_rate_c
         percent_pop = np.arange(1, n + 1) / n
-        qini = float(np.trapz(qini_curve, percent_pop))
+        qini = float(np.trapezoid(qini_curve, percent_pop))
 
         return {
             "accuracy_mse": torch.tensor(accuracy),

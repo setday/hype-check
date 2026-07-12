@@ -9,14 +9,6 @@ from src.models.uplift_model import (
 )
 from src.models.causalpfn_model import CausalPFNModel
 
-# Registry used by the evaluation harness (scripts/run_baselines.py).
-BASELINES = {
-    "s_learner": SLearnerWrapper,
-    "t_learner": TLearnerWrapper,
-    "x_learner": XLearnerWrapper,
-    "dr_learner": DRLearnerWrapper,
-}
-
 __all__ = [
     "TemplateMLP",
     "UpliftModel",
@@ -26,5 +18,4 @@ __all__ = [
     "XLearnerWrapper",
     "DRLearnerWrapper",
     "CausalPFNModel",
-    "BASELINES",
 ]

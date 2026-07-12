@@ -22,12 +22,12 @@ from src.models.uplift_model import FrozenFoundationModel
 logger = logging.getLogger(__name__)
 
 
-def causalpfn_available() -> bool:
-    try:
-        import causalpfn  # noqa: F401
-        return True
-    except Exception:
-        return False
+def _select_device():
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.mps.is_available():
+        return "mps"
+    return "cpu"
 
 
 class CausalPFNModel(FrozenFoundationModel):
@@ -35,7 +35,9 @@ class CausalPFNModel(FrozenFoundationModel):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.device = config.get("device", None)
+
+        self.device = config.get("device", _select_device())
+        
         self.max_context = config.get("max_context", 5000)
         self.verbose = bool(config.get("verbose", False))
         self._est = None
@@ -43,10 +45,9 @@ class CausalPFNModel(FrozenFoundationModel):
 
     def _make_estimator(self):
         from causalpfn import CATEEstimator
-        device = self.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
-        if str(device) == "cpu":
+        if self.device == "cpu":
             torch.set_num_threads(1)
-        return CATEEstimator(device=device, verbose=self.verbose)
+        return CATEEstimator(device=self.device, verbose=self.verbose)
 
     @staticmethod
     def _np(a):

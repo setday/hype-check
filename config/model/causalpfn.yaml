@@ -1,4 +1,6 @@
-_target_: src.models.causalpfn_model.CausalPFNModel
-device: null
-max_context: 5000
-verbose: false
+causalpfn:
+  _target_: src.models.causalpfn_model.CausalPFNModel
+  config:
+    device: null
+    max_context: 5000
+    verbose: false

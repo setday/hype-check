@@ -7,6 +7,7 @@ propensity models are classifiers.
 
 import logging
 from typing import Dict
+import warnings
 
 import numpy as np
 import torch
@@ -73,15 +74,20 @@ class _EconMLWrapper(UpliftModel):
     def fit(self, X, T, Y):
         X, T, Y = self._np(X), self._np(T).ravel(), self._np(Y).ravel()
         self.est = self._build()
-        self.est.fit(Y, T, X=X)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            warnings.simplefilter("ignore", category=FutureWarning)
+            self.est.fit(Y, T, X=X)
         self._is_fitted = True
-        logger.info("%s fitted (n=%d, d=%d).", self.display_name, X.shape[0], X.shape[1])
         return self
 
     def predict_cate(self, X) -> np.ndarray:
         if not self._is_fitted:
             raise RuntimeError(f"{self.display_name} must be fitted before prediction.")
-        return np.asarray(self.est.effect(self._np(X))).ravel()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            warnings.simplefilter("ignore", category=FutureWarning)
+            return np.asarray(self.est.effect(self._np(X))).ravel()
 
     def forward(self, features, treatment=None, **batch) -> Dict[str, torch.Tensor]:
         cate = self.predict_cate(features)

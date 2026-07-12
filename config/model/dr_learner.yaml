@@ -1,7 +1,9 @@
-_target_: src.models.uplift_model.DRLearnerWrapper
-seed: 42
-cv: 3
-params:
-  n_estimators: 200
-  num_leaves: 31
-  learning_rate: 0.05
+dr_learner:
+  _target_: src.models.uplift_model.DRLearnerWrapper
+  config:
+    seed: ${global_setings.seed}
+    cv: 3
+    # params:
+    #   n_estimators: 200
+    #   num_leaves: 31
+    #   learning_rate: 0.05

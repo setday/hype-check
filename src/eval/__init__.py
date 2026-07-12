@@ -1,3 +1,3 @@
-from src.eval.runner import run_experiments, evaluate_predictions
+from src.eval.runner import run_experiments
 
-__all__ = ["run_experiments", "evaluate_predictions"]
+__all__ = ["run_experiments"]
