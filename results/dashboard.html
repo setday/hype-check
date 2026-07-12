@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baselines Analysis Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.26.0/dist/plotly.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+            color: white;
+            padding: 48px 40px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            opacity: 0.85;
+            font-size: 0.95em;
+            font-weight: 400;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f6 100%);
+            padding: 24px;
+            border-radius: 12px;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.1);
+        }
+
+        .stat-card.alt1 {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+            border-left-color: #60a5fa;
+        }
+
+        .stat-card.alt2 {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            border-left-color: #a78bfa;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 8px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 28px;
+            border-bottom: 2px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 8px 8px 0 0;
+            padding: 0 8px;
+        }
+
+        .tab {
+            padding: 16px 24px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #64748b;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .tab.active {
+            color: #3b82f6;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2c3e50;
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+            border-color: #94a3b8;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        th {
+            background: #f8fafc;
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 700;
+            color: #2c3e50;
+            border-bottom: 2px solid #e2e8f0;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            font-size: 0.85em;
+        }
+
+        th:hover {
+            background: #f1f5f9;
+            color: #3b82f6;
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .metric-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.65em;
+            font-weight: 700;
+        }
+
+        .higher-better {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .lower-better {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .sort-icon {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 0.75em;
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+
+        .sort-icon.active {
+            opacity: 1;
+            color: #3b82f6;
+        }
+
+        td {
+            padding: 12px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #475569;
+        }
+
+        tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .num-format {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.8em;
+            color: #1e40af;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .metric-std {
+            font-size: 0.75em;
+            color: #999;
+            display: block;
+        }
+
+        .metric-interval {
+            font-size: 0.75em;
+            color: #666;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .rank-1 {
+            color: #fbbf24;
+            font-weight: 900;
+        }
+
+        .rank-2 {
+            color: #c0cfd9;
+            font-weight: 700;
+        }
+
+        .plot-container {
+            margin-bottom: 32px;
+            padding: 28px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .plot-container h3 {
+            margin-bottom: 16px;
+            color: #2c3e50;
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 0.9em;
+            letter-spacing: 0.2px;
+        }
+
+        .control-group select {
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #2c3e50;
+            background: white;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .control-group select:hover {
+            border-color: #cbd5e1;
+        }
+
+        .control-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .popup-overlay.active {
+            display: flex;
+        }
+
+        .popup {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            max-width: 400px;
+            width: 90%;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .popup h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 1.2em;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .popup-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .popup-btn {
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .popup-btn:hover {
+            border-color: #3b82f6;
+            background: #f0f4f8;
+            color: #3b82f6;
+        }
+
+        .popup-btn.selected {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+            color: #3b82f6;
+            font-weight: 700;
+            box-shadow: 0 0 0 1px #3b82f6;
+        }
+
+        .popup-group {
+            margin-bottom: 16px;
+        }
+
+        .popup-group label {
+            font-weight: 700;
+            font-size: 0.85em;
+            color: #64748b;
+            margin-bottom: 8px;
+            display: block;
+            letter-spacing: 0.2px;
+        }
+
+        .popup-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #2c3e50;
+            background: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .popup-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .popup-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .popup-actions button {
+            flex: 1;
+            padding: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 32px 24px;
+            }
+
+            .header h1 {
+                font-size: 1.6em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .table-wrapper {
+                font-size: 0.8em;
+            }
+
+            table {
+                font-size: 0.75em;
+            }
+
+            td, th {
+                padding: 8px 6px;
+            }
+
+            .control-row {
+                flex-direction: column;
+            }
+
+            .control-group {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Baselines Analysis Dashboard</h1>
+            <p>Comparative evaluation of uplift modeling approaches</p>
+        </div>
+
+        <div class="content">
+            <div id="statsGrid" class="stats-grid"></div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(event, 'table-tab')">📋 Table</button>
+                <button class="tab" onclick="switchTab(event, 'comparison-tab')">📊 Comparison</button>
+                <button class="tab" onclick="switchTab(event, 'curves-tab')">📈 Curves</button>
+            </div>
+
+            <!-- Table Tab -->
+            <div id="table-tab" class="tab-content active">
+                <div class="toolbar">
+                    <button class="btn-secondary" onclick="showFilterPopup()">🔍 Filter</button>
+                    <button class="btn-secondary" onclick="showGroupPopup()">📊 Group by</button>
+                    <button class="btn-secondary" onclick="showAggregationPopup()">∑ Aggregation</button>
+                    <button class="btn-secondary" onclick="resetFilters()">↺ Reset</button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="dataTable">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Comparison Tab (Boxplot) -->
+            <div id="comparison-tab" class="tab-content">
+                <div class="plot-container">
+                    <h3>Quantile Distribution (Boxplot)</h3>
+                    <div class="control-row">
+                        <div class="control-group">
+                            <label for="boxMetric">Select Metric:</label>
+                            <select id="boxMetric" onchange="plotBoxplot()">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="boxSliceType">Slice by:</label>
+                            <select id="boxSliceType" onchange="updateBoxSliceSelect(); plotBoxplot();">
+                                <option value="dataset">Dataset</option>
+                                <option value="model">Model</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="boxSliceValue">Select:</label>
+                            <select id="boxSliceValue" onchange="plotBoxplot()">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="boxplotPlot" style="min-height: 500px;"></div>
+                </div>
+            </div>
+
+            <!-- Curves Tab -->
+            <div id="curves-tab" class="tab-content">
+                <div class="plot-container">
+                    <h3>Qini Curves by Dataset</h3>
+                    <div class="control-group" style="margin-bottom: 24px;">
+                        <label for="curveDataset">Select Dataset:</label>
+                        <select id="curveDataset" onchange="plotCurves()"></select>
+                    </div>
+                    <div id="curvePlot" style="min-height: 500px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popups -->
+    <div id="filterPopup" class="popup-overlay">
+        <div class="popup">
+            <h3>Filter Results</h3>
+            <div class="popup-group">
+                <label for="popupFilterDataset">Dataset:</label>
+                <select id="popupFilterDataset"></select>
+            </div>
+            <div class="popup-group">
+                <label for="popupFilterModel">Model:</label>
+                <select id="popupFilterModel"></select>
+            </div>
+            <div class="popup-actions">
+                <button class="btn-primary" onclick="applyFiltersPopup()">Apply</button>
+                <button class="btn-secondary" onclick="closeFilterPopup()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="groupPopup" class="popup-overlay">
+        <div class="popup">
+            <h3>Group Results By</h3>
+            <div class="popup-options">
+                <button class="popup-btn" onclick="selectGroupBy('none')">None</button>
+                <button class="popup-btn" onclick="selectGroupBy('dataset')">Dataset</button>
+                <button class="popup-btn" onclick="selectGroupBy('model')">Model</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="aggregationPopup" class="popup-overlay">
+        <div class="popup">
+            <h3>Aggregation Method</h3>
+            <div class="popup-options">
+                <button class="popup-btn" onclick="selectAggregation('mean')">Mean</button>
+                <button class="popup-btn" onclick="selectAggregation('median')">Median</button>
+                <button class="popup-btn" onclick="selectAggregation('min')">Min</button>
+                <button class="popup-btn" onclick="selectAggregation('max')">Max</button>
+                <button class="popup-btn" onclick="selectAggregation('std')">Std Dev</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let fullData = [];
+        let filteredData = [];
+        let allCurves = {};
+
+        let filterState = { dataset: '', model: '' };
+        let groupState = 'none';
+        let aggregationState = 'mean';
+        let currentSort = { column: null, direction: null };
+
+        const metricConfig = {
+            'qini': { betterIs: 'higher' },
+            'auuc': { betterIs: 'higher' },
+            'uplift@30': { betterIs: 'higher' },
+            'uplift@10': { betterIs: 'higher' },
+            'fit_time_s': { betterIs: 'lower' },
+            'n_test': { betterIs: 'n/a' }
+        };
+
+        function getMetricBase(colName) {
+            for (const metric in metricConfig) {
+                if (colName === metric || colName.startsWith(metric + '_')) {
+                    return metric;
+                }
+            }
+            return null;
+        }
+
+        async function loadData() {
+            try {
+                const metricsResponse = await fetch('metrics.csv');
+                const metricsText = await metricsResponse.text();
+                const parsedMetrics = Papa.parse(metricsText, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true
+                });
+
+                fullData = parsedMetrics.data.filter(row => row.qini !== undefined);
+
+                const datasets = [...new Set(fullData.map(r => r.dataset))];
+                for (const ds of datasets) {
+                    try {
+                        const curvesResponse = await fetch(`curves_${ds}.csv`);
+                        const curvesText = await curvesResponse.text();
+                        const parsedCurves = Papa.parse(curvesText, {
+                            header: true,
+                            dynamicTyping: true,
+                            skipEmptyLines: true
+                        });
+                        allCurves[ds] = parsedCurves.data;
+                    } catch (e) {
+                        console.warn(`Could not load curves for ${ds}:`, e);
+                    }
+                }
+
+                initializeSelects();
+                applyFilters();
+                updateStats();
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        function initializeSelects() {
+            const datasets = [...new Set(fullData.map(r => r.dataset))].sort();
+            const models = [...new Set(fullData.map(r => r.model))].sort();
+
+            document.getElementById('popupFilterDataset').innerHTML = '<option value="">All</option>' +
+                datasets.map(d => `<option value="${d}">${d}</option>`).join('');
+            document.getElementById('popupFilterModel').innerHTML = '<option value="">All</option>' +
+                models.map(m => `<option value="${m}">${m}</option>`).join('');
+
+            const metrics = Object.keys(fullData[0] || {})
+                .filter(k => !k.endsWith('_std') && !k.endsWith('_q5') && !k.endsWith('_q95') &&
+                           !['dataset', 'model', 'fit_time_s', 'n_test'].includes(k))
+                .sort();
+            document.getElementById('boxMetric').innerHTML =
+                metrics.map(m => `<option value="${m}">${m}</option>`).join('');
+
+            document.getElementById('curveDataset').innerHTML =
+                [...new Set(fullData.map(r => r.dataset))].sort()
+                    .map(d => `<option value="${d}">${d}</option>`).join('');
+
+            // Initialize box slice select and plot
+            updateBoxSliceSelect();
+        }
+
+        function updateBoxSliceSelect() {
+            const sliceType = document.getElementById('boxSliceType').value;
+            const values = [...new Set(fullData.map(r => r[sliceType]))].sort();
+            const selectEl = document.getElementById('boxSliceValue');
+            selectEl.innerHTML = values.map(v => `<option value="${v}">${v}</option>`).join('');
+
+            // Ensure first value is selected
+            if (values.length > 0) {
+                selectEl.value = values[0];
+            }
+            // Don't plot here - will be plotted when tab is clicked
+        }
+
+        function applyFilters() {
+            const { dataset, model } = filterState;
+
+            let data = fullData.filter(row => {
+                return (dataset === '' || row.dataset === dataset) &&
+                       (model === '' || row.model === model);
+            });
+
+            if (groupState !== 'none') {
+                const grouped = {};
+                data.forEach(row => {
+                    const key = row[groupState];
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(row);
+                });
+
+                const aggregated = [];
+                for (const [key, rows] of Object.entries(grouped)) {
+                    const aggRow = { [groupState]: key };
+                    const metrics = Object.keys(rows[0])
+                        .filter(k => !k.endsWith('_std') && !k.endsWith('_q5') && !k.endsWith('_q95') &&
+                               !['dataset', 'model', 'fit_time_s', 'n_test'].includes(k));
+
+                    metrics.forEach(metric => {
+                        const values = rows.map(r => r[metric]).filter(v => !isNaN(v));
+                        if (values.length > 0) {
+                            aggRow[metric] = getAggregation(values, aggregationState);
+                            aggRow[`${metric}_std`] = rows[0][`${metric}_std`];
+                            aggRow[`${metric}_q5`] = rows[0][`${metric}_q5`];
+                            aggRow[`${metric}_q95`] = rows[0][`${metric}_q95`];
+                        }
+                    });
+
+                    aggRow['fit_time_s'] = getAggregation(rows.map(r => r.fit_time_s), aggregationState);
+                    aggRow['n_test'] = rows[0].n_test;
+                    aggregated.push(aggRow);
+                }
+                filteredData = aggregated;
+            } else {
+                filteredData = data;
+            }
+
+            renderTable();
+        }
+
+        function getAggregation(values, method) {
+            const sorted = [...values].sort((a, b) => a - b);
+            switch (method) {
+                case 'mean': return sorted.reduce((a, b) => a + b, 0) / sorted.length;
+                case 'median': return sorted[Math.floor(sorted.length / 2)];
+                case 'min': return sorted[0];
+                case 'max': return sorted[sorted.length - 1];
+                case 'std': return Math.sqrt(sorted.reduce((a, x) => a + (x - (sorted.reduce((s, y) => s + y, 0) / sorted.length)) ** 2, 0) / sorted.length);
+                default: return values[0];
+            }
+        }
+
+        function renderTable() {
+            if (filteredData.length === 0) {
+                document.getElementById('tableBody').innerHTML =
+                    '<tr><td colspan="100" style="text-align: center; color: #999;">No data matching filters</td></tr>';
+                return;
+            }
+
+            const baseMetrics = Object.keys(filteredData[0])
+                .filter(k => !k.endsWith('_std') && !k.endsWith('_q5') && !k.endsWith('_q95'));
+            const displayMetrics = baseMetrics.filter(m => !['dataset', 'model', 'fit_time_s', 'n_test'].includes(m));
+
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+
+            const headerCells = ['dataset', 'model'].concat(displayMetrics).concat(['fit_time_s', 'n_test']);
+
+            thead.innerHTML = headerCells.map(m => {
+                const isSorted = currentSort.column === m;
+                const icon = isSorted ? (currentSort.direction === 'asc' ? '↑' : '↓') : '⇅';
+                const iconClass = isSorted ? 'sort-icon active' : 'sort-icon';
+
+                let headerText = m;
+                if (displayMetrics.includes(m)) {
+                    const config = metricConfig[m] || { betterIs: 'higher' };
+                    const badgeClass = config.betterIs === 'higher' ? 'higher-better' : 'lower-better';
+                    const badgeText = config.betterIs === 'higher' ? '↑' : '↓';
+                    headerText = `<div class="metric-header">${m}<span class="metric-badge ${badgeClass}">${badgeText}</span></div>`;
+                } else if (m === 'fit_time_s') {
+                    const badgeClass = 'lower-better';
+                    const badgeText = '↓';
+                    headerText = `<div class="metric-header">${m}<span class="metric-badge ${badgeClass}">${badgeText}</span></div>`;
+                }
+
+                return `<th onclick="updateSort('${m}')">${headerText}<span class="${iconClass}">${icon}</span></th>`;
+            }).join('');
+
+            // Identify top-1 and top-2 for each metric
+            const ranks = {};
+            displayMetrics.forEach(metric => {
+                const config = metricConfig[metric] || { betterIs: 'higher' };
+                const values = filteredData
+                    .map((row, idx) => ({ value: row[metric], idx }))
+                    .sort((a, b) => config.betterIs === 'higher' ? b.value - a.value : a.value - b.value);
+
+                if (values.length > 0) ranks[metric] = { 1: values[0].idx, 2: values.length > 1 ? values[1].idx : null };
+            });
+
+            tbody.innerHTML = filteredData.map((row, rowIdx) => {
+                const cells = headerCells.map(col => {
+                    let display = '';
+                    let className = 'num-format';
+
+                    if (col === 'dataset' || col === 'model') {
+                        display = row[col] || '';
+                    } else if (displayMetrics.includes(col)) {
+                        const val = row[col];
+                        const std = row[`${col}_std`] || 0;
+                        const q5 = row[`${col}_q5`] || 0;
+                        const q95 = row[`${col}_q95`] || 0;
+
+                        const rankMark = ranks[col] && ranks[col][1] === rowIdx ? ' <span class="rank-1">★</span>' :
+                                        ranks[col] && ranks[col][2] === rowIdx ? ' <span class="rank-2">★</span>' : '';
+
+                        display = `<span class="metric-value">${val.toFixed(6)}${rankMark}</span>` +
+                                 `<span class="metric-std">± ${std.toFixed(6)}</span>` +
+                                 `<span class="metric-interval">[${q5.toFixed(4)}, ${q95.toFixed(4)}]</span>`;
+                    } else if (col === 'fit_time_s') {
+                        display = row[col] ? row[col].toFixed(2) : '';
+                    } else if (col === 'n_test') {
+                        display = row[col] ? row[col].toFixed(0) : '';
+                    }
+
+                    return `<td class="${className}">${display}</td>`;
+                }).join('');
+
+                return `<tr>${cells}</tr>`;
+            }).join('');
+        }
+
+        function updateSort(column) {
+            if (currentSort.column === column) {
+                if (currentSort.direction === 'asc') {
+                    currentSort.direction = 'desc';
+                } else if (currentSort.direction === 'desc') {
+                    currentSort.column = null;
+                    currentSort.direction = null;
+                } else {
+                    currentSort.direction = 'asc';
+                }
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            if (currentSort.column && currentSort.direction) {
+                const col = currentSort.column;
+                const dir = currentSort.direction === 'asc' ? 1 : -1;
+                const metricBase = getMetricBase(col);
+
+                filteredData.sort((a, b) => {
+                    let aVal, bVal;
+                    if (metricBase && metricBase !== col) {
+                        aVal = a[metricBase];
+                        bVal = b[metricBase];
+                    } else {
+                        aVal = a[col];
+                        bVal = b[col];
+                    }
+
+                    if (typeof aVal === 'number') {
+                        return (aVal - bVal) * dir;
+                    } else {
+                        return ((aVal || '').localeCompare(bVal || '')) * dir;
+                    }
+                });
+            }
+
+            renderTable();
+        }
+
+        function updateStats() {
+            const grid = document.getElementById('statsGrid');
+            if (filteredData.length === 0) {
+                grid.innerHTML = '';
+                return;
+            }
+
+            const stats = [
+                {
+                    label: 'Rows',
+                    value: filteredData.length,
+                    class: 'alt1'
+                },
+                {
+                    label: 'Mean Qini',
+                    value: (filteredData.reduce((a, r) => a + (r.qini || 0), 0) / filteredData.length).toFixed(6),
+                    class: ''
+                },
+                {
+                    label: 'Mean AUUC',
+                    value: (filteredData.reduce((a, r) => a + (r.auuc || 0), 0) / filteredData.length).toFixed(6),
+                    class: 'alt2'
+                },
+                {
+                    label: 'Best Qini',
+                    value: Math.max(...filteredData.map(r => r.qini || 0)).toFixed(6),
+                    class: ''
+                }
+            ];
+
+            grid.innerHTML = stats.map(s =>
+                `<div class="stat-card ${s.class}">
+                    <div class="stat-label">${s.label}</div>
+                    <div class="stat-value">${s.value}</div>
+                </div>`
+            ).join('');
+        }
+
+        function plotBoxplot() {
+            const metric = document.getElementById('boxMetric').value;
+            const sliceType = document.getElementById('boxSliceType').value;
+            const sliceValue = document.getElementById('boxSliceValue').value;
+
+            console.log('=== plotBoxplot START ===');
+            console.log('metric:', metric);
+            console.log('sliceType:', sliceType);
+            console.log('sliceValue:', sliceValue);
+            console.log('fullData.length:', fullData.length);
+
+            if (!metric || !sliceValue || fullData.length === 0) {
+                console.log('EARLY RETURN: missing data');
+                console.log('  metric truthy?', !!metric);
+                console.log('  sliceValue truthy?', !!sliceValue);
+                console.log('  fullData not empty?', fullData.length > 0);
+                return;
+            }
+
+            const sliceData = fullData.filter(row => row[sliceType] === sliceValue);
+            console.log('sliceData.length:', sliceData.length);
+
+            if (sliceData.length === 0) {
+                console.log('NO SLICE DATA');
+                document.getElementById('boxplotPlot').innerHTML = '<p style="text-align: center; padding: 20px; color: #999;">No data for selected filters</p>';
+                return;
+            }
+
+            const otherDim = sliceType === 'dataset' ? 'model' : 'dataset';
+            const values = sliceData.map(r => {
+                const v = r[metric];
+                return typeof v === 'string' ? parseFloat(v) : v;
+            });
+            const names = sliceData.map(r => r[otherDim]);
+            const q5s = sliceData.map(r => {
+                const v = r[`${metric}_q5`];
+                return typeof v === 'string' ? parseFloat(v) : v;
+            });
+            const q95s = sliceData.map(r => {
+                const v = r[`${metric}_q95`];
+                return typeof v === 'string' ? parseFloat(v) : v;
+            });
+            const stds = sliceData.map(r => {
+                const v = r[`${metric}_std`];
+                return typeof v === 'string' ? parseFloat(v) : v;
+            });
+
+            console.log('values:', values);
+            console.log('names:', names);
+            console.log('q5s sample:', q5s.slice(0, 3));
+            console.log('q95s sample:', q95s.slice(0, 3));
+
+            // Use scatter with error bars to show distribution
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+            const trace = {
+                x: names,
+                y: values,
+                error_y: {
+                    type: 'data',
+                    symmetric: false,
+                    array: values.map((v, i) => v + stds[i] - v),
+                    arrayminus: values.map((v, i) => v - (v - stds[i])),
+                    color: 'rgba(0, 0, 0, 0.3)',
+                    thickness: 2,
+                    width: 6
+                },
+                mode: 'markers',
+                marker: {
+                    size: 7,
+                    color: names.map((_, i) => colors[i % colors.length]),
+                    line: {
+                        color: names.map((_, i) => colors[i % colors.length]),
+                        width: 2
+                    }
+                },
+                name: metric,
+                text: names.map((n, i) => `${n}<br>q5: ${q5s[i].toFixed(4)}<br>value: ${values[i].toFixed(4)}<br>q95: ${q95s[i].toFixed(4)}`),
+                hovertemplate: '%{text}<extra></extra>'
+            };
+
+            const layout = {
+                title: `${metric} Distribution (${sliceType}: ${sliceValue})`,
+                yaxis: { title: metric, zeroline: false },
+                xaxis: {
+                    title: otherDim,
+                    rangeslider: { visible: false },
+                    zeroline: false
+                },
+                template: 'plotly_white',
+                height: 500,
+                margin: { b: 120 }
+            };
+
+            console.log('trace:', trace);
+            console.log('layout:', layout);
+            console.log('Calling Plotly.newPlot on:', document.getElementById('boxplotPlot'));
+
+            Plotly.newPlot('boxplotPlot', [trace], layout, { responsive: true });
+            console.log('=== plotBoxplot END ===');
+        }
+
+        function plotCurves() {
+            const dataset = document.getElementById('curveDataset').value;
+            if (!dataset || !allCurves[dataset]) return;
+
+            const curveData = allCurves[dataset];
+            const xKey = Object.keys(curveData[0])[0];
+            const x = curveData.map(row => row[xKey]);
+
+            const traces = [];
+            Object.keys(curveData[0]).slice(1).forEach(model => {
+                traces.push({
+                    x: x,
+                    y: curveData.map(row => row[model]),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: model,
+                    line: { width: 2 }
+                });
+            });
+
+            const layout = {
+                title: `Qini Curves - ${dataset}`,
+                xaxis: { title: 'Quantile', zeroline: false },
+                yaxis: { title: 'Qini Score', zeroline: false },
+                template: 'plotly_white',
+                height: 500,
+                hovermode: 'x unified',
+                margin: { t: 60, b: 60, l: 60, r: 40 }
+            };
+
+            Plotly.newPlot('curvePlot', traces, layout, { responsive: true });
+        }
+
+        function showFilterPopup() {
+            document.getElementById('filterPopup').classList.add('active');
+        }
+
+        function closeFilterPopup() {
+            document.getElementById('filterPopup').classList.remove('active');
+        }
+
+        function applyFiltersPopup() {
+            filterState.dataset = document.getElementById('popupFilterDataset').value;
+            filterState.model = document.getElementById('popupFilterModel').value;
+            closeFilterPopup();
+            applyFilters();
+            updateStats();
+        }
+
+        function showGroupPopup() {
+            document.getElementById('groupPopup').classList.add('active');
+            updateGroupButtonStates();
+        }
+
+        function closeGroupPopup() {
+            document.getElementById('groupPopup').classList.remove('active');
+        }
+
+        function selectGroupBy(value) {
+            groupState = value;
+            closeGroupPopup();
+            applyFilters();
+            updateStats();
+        }
+
+        function updateGroupButtonStates() {
+            document.querySelectorAll('#groupPopup .popup-btn').forEach((btn, idx) => {
+                btn.classList.remove('selected');
+                const values = ['none', 'dataset', 'model'];
+                if (values[idx] === groupState) {
+                    btn.classList.add('selected');
+                }
+            });
+        }
+
+        function showAggregationPopup() {
+            document.getElementById('aggregationPopup').classList.add('active');
+            updateAggregationButtonStates();
+        }
+
+        function closeAggregationPopup() {
+            document.getElementById('aggregationPopup').classList.remove('active');
+        }
+
+        function selectAggregation(value) {
+            aggregationState = value;
+            closeAggregationPopup();
+            applyFilters();
+            updateStats();
+        }
+
+        function updateAggregationButtonStates() {
+            document.querySelectorAll('#aggregationPopup .popup-btn').forEach((btn, idx) => {
+                btn.classList.remove('selected');
+                const values = ['mean', 'median', 'min', 'max', 'std'];
+                if (values[idx] === aggregationState) {
+                    btn.classList.add('selected');
+                }
+            });
+        }
+
+        function resetFilters() {
+            filterState = { dataset: '', model: '' };
+            groupState = 'none';
+            aggregationState = 'mean';
+            currentSort = { column: null, direction: null };
+            document.getElementById('popupFilterDataset').value = '';
+            document.getElementById('popupFilterModel').value = '';
+            applyFilters();
+            updateStats();
+        }
+
+        function switchTab(e, tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+            e.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+
+            if (tabName === 'comparison-tab') {
+                console.log('Switched to comparison tab, plotting boxplot');
+                plotBoxplot();
+            } else if (tabName === 'curves-tab') {
+                console.log('Switched to curves tab, plotting curves');
+                plotCurves();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
