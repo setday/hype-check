@@ -42,7 +42,6 @@ class BaseDataset(Dataset):
                 applied in preprocess_data.
         """
         self._assert_index_is_valid(index)
-
         index = self._shuffle_and_limit_index(index, limit, shuffle_index)
 
         # TODO: Optionally sort by a key for batch uniformity (e.g., sequence length)

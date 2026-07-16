@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.datasets.uplift_dataset import UpliftDataset
-from src.datasets.uplift_data_utils import (
+from datasets.control_dataset import (
     load_hillstrom_dataset,
     load_criteo_dataset,
 )

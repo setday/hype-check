@@ -1,17 +1,14 @@
-train:
-  _target_: src.datasets.uplift_dataset.UpliftDataset
-  index: ${oc.env:X5_TRAIN_INDEX}
-  limit: null
-  shuffle_index: true
+x5:
+  train:
+    _target_: src.datasets.control_dataset.ControlDataset
+    section: 'x5'
+    limit: 300000
+    split: 'train'
+    outcome_column_name: 'Y'
 
-val:
-  _target_: src.datasets.uplift_dataset.UpliftDataset
-  index: ${oc.env:X5_VAL_INDEX}
-  limit: null
-  shuffle_index: false
-
-test:
-  _target_: src.datasets.uplift_dataset.UpliftDataset
-  index: ${oc.env:X5_TEST_INDEX}
-  limit: null
-  shuffle_index: false
+  test:
+    _target_: src.datasets.control_dataset.ControlDataset
+    section: 'x5'
+    limit: null
+    split: 'test'
+    outcome_column_name: 'Y'

@@ -1,7 +1,7 @@
 defaults:
   - model: [causalpfn, s_learner, t_learner, x_learner, dr_learner]
-  - datasets: template           # → config/datasets/template.yaml
-  - metrics: uplift            # → config/metrics/template.yaml
+  - datasets: [criteo, hillstrom, lzd, orange, x5]
+  - metrics: uplift
   - _self_
 
 # ── Global experiment settings ─────────────────────────────────────────────

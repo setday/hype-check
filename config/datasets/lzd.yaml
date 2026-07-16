@@ -1,14 +1,14 @@
-hillstrom:
+lzd:
   train:
     _target_: src.datasets.control_dataset.ControlDataset
-    section: 'hillstrom'
+    section: 'lzd'
     limit: 300000
     split: 'train'
-    outcome_column_name: 'visit'
+    outcome_column_name: 'Y'
 
   test:
     _target_: src.datasets.control_dataset.ControlDataset
-    section: 'hillstrom'
+    section: 'lzd'
     limit: null
     split: 'test'
-    outcome_column_name: 'visit'
+    outcome_column_name: 'Y'

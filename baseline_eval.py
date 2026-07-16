@@ -2,36 +2,35 @@
 
 import logging
 import time
+import sys
 from pathlib import Path
-from typing import List, Optional
-from tqdm.auto import tqdm
 
+from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import torch
 from torchmetrics.wrappers import BootStrapper
 
+import hydra
 from hydra.utils import instantiate
 
-from src.datasets.uplift_data_utils import DATASETS, load_uplift_arrays
 from src.metrics import utils
+from src.utils.init_utils import ROOT_PATH
+
+
 
 logger = logging.getLogger(__name__)
 
-def run_dataset(ds_name, model_factories, metrics, *, limit=None, eval_limit=None,
-                test_size=0.3, seed=42, outpath):
-    t0 = time.perf_counter()
-    X, T, Y, _ = load_uplift_arrays(ds_name, limit=limit, seed=seed)
-    print(f"\n=== {ds_name} === n={len(X)} d={X.shape[1]} treat_share={T.mean():.3f} "
-          f"ATE_naive={Y[T==1].mean()-Y[T==0].mean():+.4f}")
+def run_dataset(dataset, model_factories, metrics, *, outpath):
+    ds_name, dataset = dataset
+    
+    X_tr, T_tr, Y_tr = dataset['train'].get_all_data()
+    X_te, T_te, Y_te = dataset['test'].get_all_data()
 
-    X_tr, X_te, T_tr, T_te, Y_tr, Y_te = train_test_split(
-        X, T, Y, test_size=test_size, random_state=seed, stratify=T)
-    if eval_limit is not None and len(X_te) > eval_limit:
-        sel = np.random.default_rng(seed).choice(len(X_te), size=eval_limit, replace=False)
-        X_te, T_te, Y_te = X_te[sel], T_te[sel], Y_te[sel]
-    print(f"  split: train={len(X_tr)} test={len(X_te)} (load {time.perf_counter()-t0:.1f}s)")
+    print(f"\n=== {ds_name} === n={len(X_tr)} d={X_tr.shape[1]} treat_share={T_tr.mean():.3f} "
+          f"ATE_naive={Y_tr[T_tr==1].mean()-Y_tr[T_tr==0].mean():+.4f}")
+
+    print(f"  split: train={len(X_tr)} test={len(X_te)}")
 
     rows, curves = [], []
     for factory in tqdm(model_factories.values(), "models", leave=False):
@@ -70,43 +69,41 @@ def run_dataset(ds_name, model_factories, metrics, *, limit=None, eval_limit=Non
     return rows
 
 
-def run_experiments(datasets: List[str], models_config: dict, metrics_config: dict, *, outdir="results",
-                    limit: Optional[int] = None, eval_limit: Optional[int] = None,
-                    n_boot=200, test_size=0.3, seed=42) -> pd.DataFrame:
-    outpath = Path(outdir)
+@hydra.main(version_base=None, config_path="config", config_name="baselines_eval")
+def main(config):
+    outpath = Path(ROOT_PATH / "results")
     outpath.mkdir(parents=True, exist_ok=True)
-    ds_names = list(DATASETS) if datasets == ["all"] else datasets
 
     make_factory = lambda cls: (lambda *args, **kwargs: instantiate(cls, *args, **kwargs))
 
     model_factories = {
         key: make_factory(value)
-        for key, value in models_config.items()
-    } # _build_models(models, seed, with_causalpfn, pfn_context)
+        for key, value in config.model.items()
+    }
     metrics = {
         value.name: BootStrapper(
             instantiate(value),
-            num_bootstraps=n_boot, 
+            num_bootstraps=200, 
             mean=True,
             std=True,
             quantile=torch.tensor([0.05, 0.95])
         )
-        for value in metrics_config
+        for value in config.metrics.val
     }
 
     all_rows = []
-    for name in tqdm(ds_names, "datasets"):
-        rows = run_dataset(name, model_factories, metrics, limit=limit, eval_limit=eval_limit,
-                                   test_size=test_size, seed=seed, outpath=outpath)
+    for name, dataset in tqdm(config.datasets.items(), "datasets"):
+        dataset = {
+            split: instantiate(data, convert_to_index=False)
+            for split, data in dataset.items()
+        }
+        rows = run_dataset((name, dataset), model_factories, metrics, outpath=outpath)
         all_rows.extend(rows)
 
     df = pd.DataFrame(all_rows)
     df.to_csv(outpath / "metrics.csv", index=False)
-    try:
-        (outpath / "metrics.md").write_text(df.round(5).to_markdown(index=False))
-    except Exception:
-        pass
     print("\n=== SUMMARY ===")
     print(df.round(5).to_string(index=False))
-    print(f"\nSaved: {outpath/'metrics.csv'}")
-    return df
+
+if __name__ == '__main__':
+    main()
