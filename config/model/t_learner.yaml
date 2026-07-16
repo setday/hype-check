@@ -1,5 +1,5 @@
 t_learner:
-  _target_: src.models.uplift_model.TLearnerWrapper
+  _target_: src.models.uplift_model.TLearner
   config:
     seed: ${global_setings.seed}
     # params:

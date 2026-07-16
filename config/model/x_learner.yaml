@@ -1,5 +1,5 @@
 x_learner:
-  _target_: src.models.uplift_model.XLearnerWrapper
+  _target_: src.models.uplift_model.XLearner
   config:
     seed: ${global_setings.seed}
     # params:

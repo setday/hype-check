@@ -1,5 +1,5 @@
 dr_learner:
-  _target_: src.models.uplift_model.DRLearnerWrapper
+  _target_: src.models.uplift_model.DRLearner
   config:
     seed: ${global_setings.seed}
     cv: 3
