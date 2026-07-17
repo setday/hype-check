@@ -42,6 +42,7 @@ pyarrow>=14              # read cleaned parquet datasets
 polars>=0.20             # dataset loaders (control_dataset)
 tabulate>=0.9           # metrics table -> markdown
 scikit-uplift>=0.5       # canonical Qini/AUUC reference (W1+)
+optuna>=3.6              # hyperparameter tuning for neural + baseline models
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Visualization & Reporting

@@ -88,14 +88,24 @@ export YANDEX_DATASET_KEY=<yandex_disk_key>   # auto-download if data missing
 python baseline_eval.py
 
 # Neural uplift models on Hillstrom (pilot)
-python baseline_eval.py --config-name neural_eval
+python tune_neural.py --config-name neural_tune_pilot
+
+# Full W1 neural tuning (40 trials, B=1000)
+python tune_neural.py --config-name neural_tune_full
+
+# Pilot with W&B
+python tune_neural.py --config-name neural_tune_pilot wandb.enabled=true wandb.run_name=neural-pilot
+
+# Single model, quick smoke
+python tune_neural.py --config-name neural_tune_pilot 'models=[dragonnet]' optuna.n_trials=1
 
 # Log metrics to Weights & Biases
 python baseline_eval.py wandb.enabled=true wandb.run_name=w1-baselines
 ```
 
 **Neural models:** `DragonNet`, `TARNet`, `CFRNet`, `EFIN`, `DESCN` in `src/models/neural/`.  
-Configs: `config/model/{dragonnet,tarnet,cfrnet,efin,descn}.yaml`, entry `config/neural_eval.yaml`.
+**Optuna tuning:** `tune_neural.py` with `config/neural_tune_pilot.yaml` (3 trials, B=100) or `neural_tune_full.yaml` (40 trials, B=1000).  
+Outputs: `optuna_trials_*.csv`, `best_params_*.json`, `predictions_lockbox.parquet`, `lockbox_metrics.csv`.
 
 Results (`metrics.csv`, `curves_*.csv`) are written to `results/`.  
 Dashboard: `results/dashboard.html`.  

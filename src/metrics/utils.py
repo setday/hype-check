@@ -2,6 +2,8 @@
 
 import numpy as np
 
+_trapz = getattr(np, "trapezoid", np.trapz)
+
 
 def sort_by_cate_pred(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarray):
     sort_idx = np.argsort(cate_pred, kind="mergesort")[::-1]  # Descending order of CATE
@@ -63,11 +65,11 @@ def compute_qini_coefficient(cate_pred: np.ndarray, outcome: np.ndarray, treatme
     percent_pop = np.linspace(0.0, 1.0, len(qini_curve))
 
     # Qini = area under Qini curve (trapezoid rule)
-    qini = float(np.trapezoid(qini_curve, percent_pop) - 0.5 * qini_curve[-1])
+    qini = float(_trapz(qini_curve, percent_pop) - 0.5 * qini_curve[-1])
 
     if normalized:
         ideal_qini_curve = compute_qini_curve(outcome * treatment - outcome * (1 - treatment), outcome, treatment)
-        qini = qini / float(np.trapezoid(ideal_qini_curve, percent_pop) - 0.5 * qini_curve[-1])
+        qini = qini / float(_trapz(ideal_qini_curve, percent_pop) - 0.5 * qini_curve[-1])
 
     return qini
 
@@ -79,7 +81,7 @@ def compute_auuc(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarr
     percent_pop = np.linspace(0.0, 1.0, len(uplift_curve))
 
     # AUUC = area under Uplift curve (trapezoid rule)
-    auuc = float(np.trapezoid(uplift_curve, percent_pop) - 0.5 * uplift_curve[-1])
+    auuc = float(_trapz(uplift_curve, percent_pop) - 0.5 * uplift_curve[-1])
 
     if normalized:
         cr_num = np.sum((outcome == 1) & (treatment == 0))
@@ -87,9 +89,9 @@ def compute_auuc(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarr
 
         summand = outcome if cr_num > tn_num else treatment
         perfect_uplift = 2 * (outcome == treatment) + summand
-        
+
         ideal_uplift_curve = compute_uplift_curve(perfect_uplift, outcome, treatment)
-        auuc = auuc / float(np.trapezoid(ideal_uplift_curve, percent_pop) - 0.5 * uplift_curve[-1])
+        auuc = auuc / float(_trapz(ideal_uplift_curve, percent_pop) - 0.5 * uplift_curve[-1])
 
     return auuc
 

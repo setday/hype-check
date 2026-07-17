@@ -228,6 +228,7 @@ data/
 results_*/
 logs/
 experiments/
+!src/experiments/
 *.json
 *.pkl
 *.h5
