@@ -1,0 +1,12 @@
+hillstrom:
+  train:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'hillstrom'
+    limit: 300000
+    split: 'train'
+
+  test:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'hillstrom'
+    limit: null
+    split: 'test'

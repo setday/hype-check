@@ -1,0 +1,12 @@
+lenta:
+  train:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'lenta'
+    limit: 300000
+    split: 'train'
+
+  test:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'lenta'
+    limit: null
+    split: 'test'

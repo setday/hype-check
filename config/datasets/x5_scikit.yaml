@@ -1,0 +1,12 @@
+x5:
+  train:
+    _target_: src.datasets.control_dataset.ControlDataset
+    section: 'x5'
+    limit: 300000
+    split: 'train'
+
+  test:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'x5'
+    limit: null
+    split: 'test'

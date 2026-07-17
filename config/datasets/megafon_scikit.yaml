@@ -1,0 +1,12 @@
+megafone:
+  train:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'megafon'
+    limit: null
+    split: 'train'
+
+  test:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'megafon'
+    limit: null
+    split: 'test'

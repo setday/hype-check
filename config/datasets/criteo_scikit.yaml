@@ -1,0 +1,12 @@
+criteo:
+  train:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'criteo'
+    limit: 300000
+    split: 'train'
+
+  test:
+    _target_: src.datasets.scikit_dataset.ScikitDataset
+    section: 'criteo'
+    limit: null
+    split: 'test'
