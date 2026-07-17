@@ -124,6 +124,7 @@ class ScikitDataset(UpliftDataset):
                 feature_dtype=np.float32,
             )
         else:
+            self.instance_transforms = instance_transforms
             self._index: dict[str, list] = {
                 "features": X.astype(np.float32),
                 "treatment": T.astype(np.int8),

@@ -100,6 +100,7 @@ class ControlDataset(UpliftDataset):
                 feature_dtype=np.float32,
             )
         else:
+            self.instance_transforms = instance_transforms
             self._index: dict[str, list] = index
 
 
