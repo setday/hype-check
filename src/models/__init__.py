@@ -8,6 +8,7 @@ from src.models.uplift_model import (
     DRLearner,
 )
 from src.models.causalpfn_model import CausalPFNModel
+from src.models.neural import DragonNet, TARNet, CFRNet, EFIN, DESCN
 
 __all__ = [
     "TemplateMLP",
@@ -18,4 +19,9 @@ __all__ = [
     "XLearner",
     "DRLearner",
     "CausalPFNModel",
+    "DragonNet",
+    "TARNet",
+    "CFRNet",
+    "EFIN",
+    "DESCN",
 ]

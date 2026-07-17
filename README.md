@@ -52,11 +52,11 @@ We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate w
 
 ### Tasks
 
-[~] W1: harness, smoke test, baselines, first untuned comparison; — `scripts/run_baselines.py`
+[~] W1: harness, smoke test, baselines, first untuned comparison; — `baseline_eval.py`
 
-[ ] W2: break-axis mapping; add Q-Learner and GP-CATE;
+[~] W2: neural uplift models (DragonNet, TARNet, CFRNet, EFIN, DESCN)
 
-[ ] W3: implement and ablate CausalPFN-Rank;
+[ ] W3: break-axis mapping + CausalPFN-Rank ablations
 
 [ ] W4: final runs with CIs and efficiency; write-up.
 
@@ -82,14 +82,25 @@ We will use real marketing RCTs and semi-synthetic CATE benchmarks to evaluate w
 
 ```bash
 export HYPECHECK_DATA_ROOT=/path/to/data_A_cleaned
+export YANDEX_DATASET_KEY=<yandex_disk_key>   # auto-download if data missing
 
-python scripts/run_baselines.py --datasets all --limit 300000
-python scripts/run_baselines.py --datasets all --with-causalpfn --eval-limit 6000 --outdir results_with_pfn
-python scripts/smoke_test.py --dataset hillstrom --models s_learner,causalpfn
+# W1 baselines + CausalPFN (Hydra)
+python baseline_eval.py
+
+# Neural uplift models on Hillstrom (pilot)
+python baseline_eval.py --config-name neural_eval
+
+# Log metrics to Weights & Biases
+python baseline_eval.py wandb.enabled=true wandb.run_name=w1-baselines
 ```
 
-Results (`metrics.csv`, `metrics.md`, `qini_*.png`) are written to `--outdir` (default `results/`).
-Precomputed W1 results (`results/`, `results_with_pfn/`) are on [Google Drive](https://drive.google.com/drive/folders/1RJrAvz2cbam-1YAwcigFabHDDnAXwPFl?usp=sharing).
+**Neural models:** `DragonNet`, `TARNet`, `CFRNet`, `EFIN`, `DESCN` in `src/models/neural/`.  
+Configs: `config/model/{dragonnet,tarnet,cfrnet,efin,descn}.yaml`, entry `config/neural_eval.yaml`.
+
+Results (`metrics.csv`, `curves_*.csv`) are written to `results/`.  
+Dashboard: `results/dashboard.html`.  
+W&B project: [hype-check](https://wandb.ai/profile/hype-check).
+Precomputed W1 results are on [Google Drive](https://drive.google.com/drive/folders/1RJrAvz2cbam-1YAwcigFabHDDnAXwPFl?usp=sharing).
 
 ## Materials
 

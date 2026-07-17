@@ -1,0 +1,11 @@
+efin:
+  _target_: src.models.neural.efin.EFIN
+  config:
+    seed: ${global_setings.seed}
+    hidden_dim: 200
+    n_layers: 3
+    dropout: 0.1
+    lr: 0.001
+    batch_size: 256
+    max_epochs: 50
+    patience: 5
