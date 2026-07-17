@@ -28,11 +28,16 @@ def _maybe_init_wandb(cfg: DictConfig):
     wb = cfg.get("wandb", {})
     if not wb.get("enabled", False):
         return None
+    import os
     import wandb
+
+    api_key = os.environ.get("WANDB_API_KEY")
+    if api_key:
+        wandb.login(key=api_key)
 
     return wandb.init(
         project=wb.get("project", "hype-check"),
-        entity=wb.get("entity"),
+        entity=wb.get("entity", "hype-check"),
         name=wb.get("run_name"),
         config=OmegaConf.to_container(cfg, resolve=True),
         reinit=True,
