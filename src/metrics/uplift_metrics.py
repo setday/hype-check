@@ -69,7 +69,7 @@ class QiniMetric(Metric):
 
         qini = compute_qini_coefficient(cate_pred, outcome, treatment, normalized=self.normalized)
 
-        return torch.tensor(qini)
+        return torch.tensor(qini, dtype=torch.float32)
 
 
 class AUUCMetric(Metric):
@@ -114,7 +114,7 @@ class AUUCMetric(Metric):
 
         auuc = compute_auuc(cate_pred, outcome, treatment, normalized=self.normalized)
 
-        return torch.tensor(auuc)
+        return torch.tensor(auuc, dtype=torch.float32)
 
 
 class UpliftAtKMetric(Metric):
@@ -161,7 +161,7 @@ class UpliftAtKMetric(Metric):
         
         uplift_at_k = compute_uplift_at_k(cate_pred, outcome, treatment, k=self.k)
 
-        return torch.tensor(uplift_at_k)
+        return torch.tensor(uplift_at_k, dtype=torch.float32)
 
 
 class PEHEMetric(Metric):

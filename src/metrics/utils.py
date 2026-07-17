@@ -1,7 +1,5 @@
 """Numpy uplift ranking metrics (higher cate_pred = more responsive)."""
 
-from typing import Callable
-
 import numpy as np
 
 
@@ -14,7 +12,7 @@ def sort_by_cate_pred(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.
     return sorted_outcome, sorted_treatment
 
 
-def compute_qini_curve(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarray, normalized: bool = True):
+def compute_qini_curve(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarray):
     """Return (x, q): targeted fraction vs cumulative incremental responders."""
     sorted_outcome, sorted_treatment = sort_by_cate_pred(cate_pred, outcome, treatment)
     
@@ -22,29 +20,44 @@ def compute_qini_curve(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np
     cumsum_response_t = np.cumsum(sorted_outcome * sorted_treatment)
     cumsum_response_c = np.cumsum(sorted_outcome * (1 - sorted_treatment))
     cumsum_count_t = np.cumsum(sorted_treatment)
-    cumsum_count_c = np.cumsum(1 - sorted_treatment)
+    cumsum_count_c = np.cumsum(1 - sorted_treatment).astype(np.float32)
 
     # Masking extreme values
-    mask_cumsum_count_c = cumsum_count_c == 0
-    cumsum_count_c[mask_cumsum_count_c] = 1
+    cumsum_count_c[cumsum_count_c == 0] = float('inf')
 
     # Qini curve = difference in response rates
     ratios = cumsum_count_t / cumsum_count_c
     incremental_uplift = cumsum_response_t - cumsum_response_c * ratios
 
-    if normalized:
-        qini_curve = incremental_uplift / cumsum_count_t[-1]
-    else:
-        qini_curve = incremental_uplift
-
-    qini_curve[mask_cumsum_count_c] = cumsum_response_t[mask_cumsum_count_c]
-    qini_curve = np.concatenate([[0.0], qini_curve])
+    qini_curve = np.concatenate([[0.0], incremental_uplift])
 
     return qini_curve
 
 
+def compute_uplift_curve(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarray):
+    """Return (x, q): targeted fraction vs cumulative incremental responders."""
+    sorted_outcome, sorted_treatment = sort_by_cate_pred(cate_pred, outcome, treatment)
+    
+    # Cumulative response for treatment and control groups
+    cumsum_response_t = np.cumsum(sorted_outcome * sorted_treatment)
+    cumsum_response_c = np.cumsum(sorted_outcome * (1 - sorted_treatment))
+    cumsum_count_t = np.cumsum(sorted_treatment).astype(np.float32)
+    cumsum_count_c = np.cumsum(1 - sorted_treatment).astype(np.float32)
+
+    # Masking extreme values
+    cumsum_count_c[cumsum_count_c == 0] = float('inf')
+    cumsum_count_t[cumsum_count_t == 0] = float('inf')
+
+    # Uplift curve = difference in response rates
+    incremental_uplift = (cumsum_response_t / cumsum_count_t - cumsum_response_c / cumsum_count_c) * np.arange(1, len(sorted_outcome) + 1)
+
+    uplift_curve = np.concatenate([[0.0], incremental_uplift])
+
+    return uplift_curve
+
+
 def compute_qini_coefficient(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarray, normalized: bool = True) -> float:
-    qini_curve = compute_qini_curve(cate_pred, outcome, treatment, normalized=normalized)
+    qini_curve = compute_qini_curve(cate_pred, outcome, treatment)
 
     # Percentage of population (x-axis)
     percent_pop = np.linspace(0.0, 1.0, len(qini_curve))
@@ -52,26 +65,27 @@ def compute_qini_coefficient(cate_pred: np.ndarray, outcome: np.ndarray, treatme
     # Qini = area under Qini curve (trapezoid rule)
     qini = float(np.trapezoid(qini_curve, percent_pop) - 0.5 * qini_curve[-1])
 
+    if normalized:
+        ideal_qini_curve = compute_qini_curve(outcome * treatment - outcome * (1 - treatment), outcome, treatment)
+        qini = qini / float(np.trapezoid(ideal_qini_curve, percent_pop) - 0.5 * qini_curve[-1])
+
     return qini
 
 
 def compute_auuc(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarray, normalized: bool = True) -> float:
-    sorted_outcome, sorted_treatment = sort_by_cate_pred(cate_pred, outcome, treatment)
-    
-    # Cumulative response for treatment and control groups
-    cumsum_response_t = np.cumsum(sorted_outcome * sorted_treatment)
-    cumsum_response_c = np.cumsum(sorted_outcome * (1 - sorted_treatment))
-    cumsum_count_t = np.cumsum(sorted_treatment)
-    cumsum_count_c = np.cumsum(1 - sorted_treatment)
-    
-    with np.errstate(divide="ignore", invalid="ignore"):
-        response_t = np.where(cumsum_count_t > 0, cumsum_response_t / cumsum_count_t, 0.0)
-        response_c = np.where(cumsum_count_c > 0, cumsum_response_c / cumsum_count_c, 0.0)
-    
-    n = len(cumsum_response_c)
-    idx = np.arange(1, n + 1)
-    area = float(np.trapezoid((response_t - response_c) * idx, idx / n))
-    return area / n if normalized else area
+    uplift_curve = compute_uplift_curve(cate_pred, outcome, treatment)
+
+    # Percentage of population (x-axis)
+    percent_pop = np.linspace(0.0, 1.0, len(uplift_curve))
+
+    # AUUC = area under Uplift curve (trapezoid rule)
+    auuc = float(np.trapezoid(uplift_curve, percent_pop))
+
+    if normalized:
+        ideal_uplift_curve = compute_uplift_curve(outcome * treatment - outcome * (1 - treatment), outcome, treatment)
+        auuc = auuc / float(np.trapezoid(ideal_uplift_curve, percent_pop))
+
+    return auuc
 
 
 def compute_uplift_at_k(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarray, k: float = 0.3) -> float:
