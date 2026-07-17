@@ -252,11 +252,6 @@ class ControlDataset(UpliftDataset):
         Y = df[outcome].to_numpy()
         logger.info("Loaded %s: n=%d, features=%d, outcome=%s", name, len(X), X.shape[1], outcome)
         return X, T, Y, feature_names
-    
-
-    def _arrays_to_index(self, X, T, Y) -> List[Dict[str, Any]]:
-        """Convert (X, T, Y) arrays into the UpliftDataset index (list of dicts)."""
-        return 
 
 
     def load_uplift_dataset(self, name, outcome=None, data_root=None, convert_to_index=True, split=None, limit=None, use_cache=False):
@@ -302,4 +297,13 @@ class ControlDataset(UpliftDataset):
     def get_all_data(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return the full dataset as (X, T, Y)."""
         assert not self._convert_to_index, "get_all_data() is only available when convert_to_index=False"
-        return self._index["features"], self._index["treatment"], self._index["outcome"]
+        index = {
+            "features": self._index["features"],
+            "treatment": self._index["treatment"],
+            "outcome": self._index["outcome"]
+        }
+        if self.instance_transforms:
+            for key, transform in self.instance_transforms.items():
+                if key in self._index:
+                    index[key] = [transform(x) for x in self._index[key]]
+        return index["features"], index["treatment"], index["outcome"]
