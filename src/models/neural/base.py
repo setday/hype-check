@@ -87,7 +87,7 @@ class NeuralUpliftModel(UpliftModel):
         )
         return DataLoader(ds, batch_size=self.batch_size, shuffle=shuffle)
 
-    def fit(self, X, T, Y):
+    def fit(self, X, T, Y, X_val=None, T_val=None, Y_val=None):
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
 
@@ -95,14 +95,25 @@ class NeuralUpliftModel(UpliftModel):
         t = self._np(T).astype(np.float32).ravel()
         y = self._np(Y).astype(np.float32).ravel()
 
-        x_tr, x_va, t_tr, t_va, y_tr, y_va = train_test_split(
-            x, t, y, test_size=self.val_fraction, random_state=self.seed, stratify=t,
-        )
+        if X_val is not None:
+            x_va = self.scaler.transform(self._np(X_val).astype(np.float32))
+            t_va = self._np(T_val).astype(np.float32).ravel()
+            y_va = self._np(Y_val).astype(np.float32).ravel()
+            x_tr, t_tr, y_tr = x, t, y
+        elif self.val_fraction > 0:
+            x_tr, x_va, t_tr, t_va, y_tr, y_va = train_test_split(
+                x, t, y, test_size=self.val_fraction, random_state=self.seed, stratify=t,
+            )
+        else:
+            x_tr, t_tr, y_tr = x, t, y
+            x_va = t_va = y_va = None
 
         self.net = self.build_network(x.shape[1]).to(self.device)
         opt = torch.optim.Adam(self.net.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         train_loader = self._make_loader(x_tr, t_tr, y_tr, shuffle=True)
-        val_loader = self._make_loader(x_va, t_va, y_va, shuffle=False)
+        val_loader = None
+        if x_va is not None:
+            val_loader = self._make_loader(x_va, t_va, y_va, shuffle=False)
 
         best_state, best_val, bad_epochs = None, float("inf"), 0
         t0 = time.perf_counter()
@@ -116,15 +127,19 @@ class NeuralUpliftModel(UpliftModel):
                 loss.backward()
                 opt.step()
 
-            val_loss = self._eval_loss(val_loader)
-            if val_loss < best_val - 1e-5:
-                best_val = val_loss
-                best_state = {k: v.detach().cpu().clone() for k, v in self.net.state_dict().items()}
-                bad_epochs = 0
+            if val_loader is not None:
+                val_loss = self._eval_loss(val_loader)
+                if val_loss < best_val - 1e-5:
+                    best_val = val_loss
+                    best_state = {k: v.detach().cpu().clone() for k, v in self.net.state_dict().items()}
+                    bad_epochs = 0
+                else:
+                    bad_epochs += 1
+                    if bad_epochs >= self.patience:
+                        break
             else:
-                bad_epochs += 1
-                if bad_epochs >= self.patience:
-                    break
+                best_state = {k: v.detach().cpu().clone() for k, v in self.net.state_dict().items()}
+                best_val = float("nan")
 
         if best_state is not None:
             self.net.load_state_dict(best_state)
