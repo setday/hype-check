@@ -37,8 +37,9 @@ def run_dataset(dataset, model_factories, metrics, *, outpath):
         model = factory()
         tf = time.perf_counter()
         model.fit(X_tr, T_tr, Y_tr)
-        cate = model.predict_cate(X_te)
         fit_s = time.perf_counter() - tf
+        cate = model.predict_cate(X_te)
+        predict_s = time.perf_counter() - tf - fit_s
 
         metrics_args = {
             "cate_pred": torch.from_numpy(cate),
@@ -57,10 +58,24 @@ def run_dataset(dataset, model_factories, metrics, *, outpath):
 
         disp = getattr(model, "display_name", model.__class__.__name__)
         curves.append((disp, utils.compute_qini_curve(cate, Y_te, T_te)))
-        metrics_values.update({"dataset": ds_name, "model": disp, "fit_time_s": round(fit_s, 2), "n_test": len(X_te)})
+        metrics_values.update({
+            "dataset": ds_name,
+            "model": disp,
+            "fit_time_s": round(fit_s, 2),
+            "predict_time_s": round(predict_s, 2),
+            "n_test": len(X_te)
+        })
         rows.append(metrics_values)
+
+        # Reset metrics so they don't accumulate across models (multi-GB memory leak)
+        for metric in metrics.values():
+            metric.reset()
     
-    x = np.linspace(0.0, 1.0, len(curves[0][1]))
+    first_curve = curves[0][1]
+    x = np.arange(len(first_curve) + 1)
+    
+    curves.append(("random", np.linspace(0.0, first_curve[-1], len(first_curve))))
+    curves.append(("ideal", utils.compute_qini_curve(Y_te * T_te - Y_te * (1 - T_te), Y_te, T_te)))
 
     all_curves = np.vstack([x]+[e[1] for e in curves]).T
     df = pd.DataFrame(all_curves, columns=["x"]+[e[0] for e in curves])
