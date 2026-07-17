@@ -79,11 +79,17 @@ def compute_auuc(cate_pred: np.ndarray, outcome: np.ndarray, treatment: np.ndarr
     percent_pop = np.linspace(0.0, 1.0, len(uplift_curve))
 
     # AUUC = area under Uplift curve (trapezoid rule)
-    auuc = float(np.trapezoid(uplift_curve, percent_pop))
+    auuc = float(np.trapezoid(uplift_curve, percent_pop) - 0.5 * uplift_curve[-1])
 
     if normalized:
-        ideal_uplift_curve = compute_uplift_curve(outcome * treatment - outcome * (1 - treatment), outcome, treatment)
-        auuc = auuc / float(np.trapezoid(ideal_uplift_curve, percent_pop))
+        cr_num = np.sum((outcome == 1) & (treatment == 0))
+        tn_num = np.sum((outcome == 0) & (treatment == 1))
+
+        summand = outcome if cr_num > tn_num else treatment
+        perfect_uplift = 2 * (outcome == treatment) + summand
+        
+        ideal_uplift_curve = compute_uplift_curve(perfect_uplift, outcome, treatment)
+        auuc = auuc / float(np.trapezoid(ideal_uplift_curve, percent_pop) - 0.5 * uplift_curve[-1])
 
     return auuc
 
