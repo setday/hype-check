@@ -1,6 +1,6 @@
 defaults:
-  - model: [causalpfn, s_learner, t_learner, x_learner, dr_learner]
-  - datasets: [criteo, hillstrom, lzd, orange, x5]
+  - model: [dragonnet, tarnet, cfrnet, efin, descn, s_learner]
+  - datasets: [hillstrom]
   - metrics: uplift
   - _self_
 
