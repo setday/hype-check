@@ -8,6 +8,7 @@ propensity models are classifiers.
 
 import logging
 from typing import Dict
+import warnings
 
 import numpy as np
 import torch
@@ -101,7 +102,13 @@ class SLearner(_BaseLearner):
         X = self._np(X)
         X1 = np.column_stack([X, np.ones(len(X))])
         X0 = np.column_stack([X, np.zeros(len(X))])
-        return self.model.predict(X1) - self.model.predict(X0)
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+            pred1 = self.model.predict(X1)
+            pred0 = self.model.predict(X0)
+            
+        return pred1 - pred0
 
 
 class TLearner(_BaseLearner):
@@ -127,7 +134,13 @@ class TLearner(_BaseLearner):
 
     def predict_cate(self, X) -> np.ndarray:
         X = self._np(X)
-        return self.model1.predict(X) - self.model0.predict(X)
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+            pred1 = self.model1.predict(X)
+            pred0 = self.model0.predict(X)
+
+        return pred1 - pred0
 
 
 class XLearner(_BaseLearner):
@@ -161,8 +174,10 @@ class XLearner(_BaseLearner):
         self.model0.fit(X[mask0], Y[mask0])
 
         # Step 2 — cross-imputed ITEs
-        ite1 = Y[mask1] - self.model0.predict(X[mask1])
-        ite0 = self.model1.predict(X[mask0]) - Y[mask0]
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+            ite1 = Y[mask1] - self.model0.predict(X[mask1])
+            ite0 = self.model1.predict(X[mask0]) - Y[mask0]
 
         # Step 3 — model ITEs
         self.cate_model1 = _lgbm_regressor(random_state=self.seed, **self.params)
@@ -178,9 +193,13 @@ class XLearner(_BaseLearner):
 
     def predict_cate(self, X) -> np.ndarray:
         X = self._np(X)
-        tau1 = self.cate_model1.predict(X)
-        tau0 = self.cate_model0.predict(X)
-        g = self.propensity_model.predict_proba(X)[:, 1]
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+            tau1 = self.cate_model1.predict(X)
+            tau0 = self.cate_model0.predict(X)
+            g = self.propensity_model.predict_proba(X)[:, 1]
+
         return g * tau0 + (1 - g) * tau1
 
 
@@ -220,7 +239,9 @@ class DRLearner(_BaseLearner):
             # Propensity
             prop = _lgbm_classifier(random_state=self.seed)
             prop.fit(X_tr, T_tr)
-            e_hat = prop.predict_proba(X_sc)[:, 1]
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+                e_hat = prop.predict_proba(X_sc)[:, 1]
 
             # Regression per arm
             mask1 = T_tr == 1
@@ -229,8 +250,10 @@ class DRLearner(_BaseLearner):
             reg0 = _lgbm_regressor(random_state=self.seed, **self.params)
             reg0.fit(X_tr[~mask1], Y_tr[~mask1])
 
-            mu1 = reg1.predict(X_sc)
-            mu0 = reg0.predict(X_sc)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+                mu1 = reg1.predict(X_sc)
+                mu0 = reg0.predict(X_sc)
             mu_t = mu1 * T_sc + mu0 * (1 - T_sc)
 
             # AIPW pseudo-outcome with clipped propensity
@@ -249,4 +272,7 @@ class DRLearner(_BaseLearner):
         return self
 
     def predict_cate(self, X) -> np.ndarray:
-        return self._final_model.predict(self._np(X))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+            pred = self._final_model.predict(self._np(X))
+        return pred
