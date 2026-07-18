@@ -33,7 +33,10 @@ def _maybe_init_wandb(cfg: DictConfig):
 
     api_key = os.environ.get("WANDB_API_KEY")
     if api_key:
-        wandb.login(key=api_key)
+        try:
+            wandb.login(key=api_key)
+        except (ValueError, wandb.errors.UsageError):
+            pass  # already logged in or newer key format handled by wandb.init
 
     return wandb.init(
         project=wb.get("project", "hype-check"),
@@ -92,7 +95,13 @@ def tune_one_model(
         )
 
     logger.info("Starting Optuna for %s (%d trials)", model_key, opt_cfg.n_trials)
-    study.optimize(objective, n_trials=int(opt_cfg.n_trials), n_jobs=int(opt_cfg.n_jobs), show_progress_bar=True)
+    study.optimize(
+        objective,
+        n_trials=int(opt_cfg.n_trials),
+        n_jobs=int(opt_cfg.n_jobs),
+        show_progress_bar=True,
+        catch=(RuntimeError, ValueError),
+    )
 
     trials_df = study.trials_dataframe()
     trials_df.to_csv(outdir / f"optuna_trials_{dataset_name}_{model_key}.csv", index=False)
