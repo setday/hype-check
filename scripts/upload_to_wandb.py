@@ -26,7 +26,10 @@ def main():
 
     api_key = os.environ.get("WANDB_API_KEY")
     if api_key:
-        wandb.login(key=api_key)
+        try:
+            wandb.login(key=api_key)
+        except (ValueError, wandb.errors.UsageError):
+            pass
 
     run = wandb.init(project=args.project, entity=args.entity, name=args.run_name, reinit=True)
 

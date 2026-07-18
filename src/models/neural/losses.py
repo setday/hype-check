@@ -18,7 +18,7 @@ def dragonnet_targeted_regularization(y0, y1, propensity, y, t, epsilon):
     pred = t * y1 + (1.0 - t) * y0
     e = torch.clamp(propensity, 1e-6, 1.0 - 1e-6)
     h = t / e - (1.0 - t) / (1.0 - e)
-    y_pert = pred + epsilon * h
+    y_pert = torch.clamp(pred + epsilon * h, 1e-6, 1.0 - 1e-6)
     return torch.nn.functional.binary_cross_entropy(y_pert, y)
 
 
