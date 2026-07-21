@@ -1,0 +1,11 @@
+# CausalFM: Foundation Models for Causal Inference
+# Prior function network for heterogeneous treatment effect estimation
+# Repo: https://github.com/yccm/CausalFM-toolkit
+# Paper: "Causal Foundation Models for Heterogeneous Treatment Effect Estimation"
+
+causalfm:
+  _target_: src.models.causalfm_model.CausalFM
+  device: null  # auto-detect (cuda/mps/cpu)
+  max_context: 5000
+  treatment_balanced: false  # whether to balance T=0/T=1 in context
+  verbose: false
