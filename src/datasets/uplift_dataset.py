@@ -61,7 +61,7 @@ class UpliftDataset(BaseDataset):
         """
         Convert to torch tensors.
         - features: (n_features,) -> float32 tensor
-        - treatment: scalar -> long tensor (0 or 1)
+        - treatment: scalar -> long tensor (0 or 1, binary) or float32 (continuous)
         - outcome: scalar -> float32 tensor
         - cate_true: scalar -> float32 tensor (if present)
         """
@@ -84,7 +84,12 @@ class UpliftDataset(BaseDataset):
 
         if "treatment" in instance_data:
             t = instance_data["treatment"]
-            result["treatment"] = torch.tensor(t, dtype=torch.long)
+            # Infer treatment type: if float in [0,1] range, treat as continuous; else binary
+            t_float = float(t)
+            if isinstance(t, float) or (isinstance(t, (int, np.integer)) and not (t == 0 or t == 1)):
+                result["treatment"] = torch.tensor(t_float, dtype=torch.float32)
+            else:
+                result["treatment"] = torch.tensor(int(t), dtype=torch.long)
 
         if "outcome" in instance_data:
             y = instance_data["outcome"]
@@ -100,6 +105,7 @@ class UpliftDataset(BaseDataset):
     def _assert_index_is_valid(index: List[Dict[str, Any]]) -> None:
         """
         Validate uplift index structure.
+        Supports both binary (0, 1) and continuous (float) treatments.
         """
         if not index:
             raise ValueError("Index cannot be empty.")
@@ -116,9 +122,10 @@ class UpliftDataset(BaseDataset):
                 )
 
             t = entry.get("treatment")
-            if t not in [0, 1] and not isinstance(t, (int, float)):
+            # Accept both binary (0, 1) and continuous (float) treatments
+            if not isinstance(t, (int, float, np.integer, np.floating)):
                 raise ValueError(
-                    f"Index entry {i}: treatment must be 0, 1, or numeric; got {t}"
+                    f"Index entry {i}: treatment must be numeric; got {type(t).__name__}"
                 )
 
         logger.info(f"Index validated: {len(index)} entries")
