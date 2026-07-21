@@ -1,0 +1,12 @@
+# TabPFN-3: Tabular Prior Function Network (v3)
+# Production-ready foundation model for tabular data
+# Uses T-Learner approach: P(Y|T=1) - P(Y|T=0)
+# Repo: https://github.com/PriorLabs/TabPFN
+# HuggingFace: https://huggingface.co/Prior-Labs/tabpfn_3
+# Paper: https://arxiv.org/abs/2605.13986
+
+tabpfn3:
+  _target_: src.models.tabpfn3_model.TabPFN3
+  device: null  # auto-detect (cuda/mps/cpu)
+  max_context: 5000
+  verbose: false

@@ -1,0 +1,10 @@
+# FoCAT: Foundational Causal Adaptive Transformer
+# Training-free, in-context learning for CATE estimation
+# Repo: https://github.com/NTAILab/FoCAT
+# Paper: FoCAT: Foundation for Causal Analysis via Transformer
+
+focat:
+  _target_: src.models.focat_model.FoCAT
+  device: null  # auto-detect (cuda/mps/cpu)
+  max_context: 5000
+  verbose: false

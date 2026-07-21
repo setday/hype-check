@@ -1,0 +1,11 @@
+# Do-PFN: Prior Function Network with Causal Interventions
+# Models interventional distributions P(Y|do(T=1)) and P(Y|do(T=0)) separately
+# Repo: https://github.com/jr2021/Do-PFN
+# Paper: "In-Context Learning for Causal Effect Estimation" (arXiv 2506.06039)
+
+dopfn:
+  _target_: src.models.dopfn_model.DoPFN
+  device: null  # auto-detect (cuda/mps/cpu)
+  max_context_treated: 2500  # context samples for T=1 arm
+  max_context_control: 2500  # context samples for T=0 arm
+  verbose: false

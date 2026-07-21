@@ -30,6 +30,7 @@ scikit-garden==0.1.3
 causallib>=0.3.1
 lightgbm>=4.0            # base learner for the meta-learners
 causalpfn>=0.1.4         # foundation model (optional; needs faiss-cpu, huggingface_hub)
+tabpfn>=0.0.1            # TabPFN-3 tabular foundation model
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Data handling & benchmarks

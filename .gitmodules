@@ -1,0 +1,9 @@
+[submodule "external/FoCAT"]
+	path = external/FoCAT
+	url = https://github.com/NTAILab/FoCAT
+[submodule "external/CausalFM"]
+	path = external/CausalFM
+	url = https://github.com/yccm/CausalFM-toolkit
+[submodule "external/Do-PFN"]
+	path = external/Do-PFN
+	url = https://github.com/jr2021/Do-PFN
