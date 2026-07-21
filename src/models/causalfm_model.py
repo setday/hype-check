@@ -31,7 +31,12 @@ def _select_device():
 class CausalFM(FrozenFoundationModel):
     display_name = "CausalFM"
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict = None, **kwargs):
+        # Handle both Hydra config dict and direct kwargs
+        if config is None:
+            config = {}
+        if isinstance(config, dict):
+            config = {**config, **kwargs}  # Merge kwargs into config
         super().__init__(config)
 
         self.device = config.get("device", _select_device())
