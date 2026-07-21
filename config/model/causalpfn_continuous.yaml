@@ -1,0 +1,5 @@
+causalpfn_continuous:
+  _target_: src.models.causalpfn_continuous.CausalPFNContinuous
+  max_context: 5000
+  verbose: false
+  n_bins: 10
