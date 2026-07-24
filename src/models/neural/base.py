@@ -15,6 +15,20 @@ from src.models.uplift_model import UpliftModel
 
 logger = logging.getLogger(__name__)
 
+# Set once from tune_neural when CUDA is available.
+_TORCH_GPU_CONFIGURED = False
+
+
+def configure_torch_gpu() -> None:
+    """One-time CUDA backend tuning (safe to call repeatedly)."""
+    global _TORCH_GPU_CONFIGURED
+    if _TORCH_GPU_CONFIGURED or not torch.cuda.is_available():
+        return
+    torch.backends.cudnn.benchmark = True
+    if hasattr(torch, "set_float32_matmul_precision"):
+        torch.set_float32_matmul_precision("high")
+    _TORCH_GPU_CONFIGURED = True
+
 
 def _select_device(preferred: Optional[str] = None) -> torch.device:
     if preferred:
@@ -60,6 +74,10 @@ class NeuralUpliftModel(UpliftModel):
         self.patience = int(config.get("patience", 5))
         self.val_fraction = float(config.get("val_fraction", 0.1))
         self.device = _select_device(config.get("device"))
+        use_cuda = self.device.type == "cuda"
+        self.use_amp = bool(config.get("use_amp", use_cuda)) and use_cuda
+        self.num_workers = int(config.get("num_workers", 2 if use_cuda else 0))
+        self.pin_memory = bool(config.get("pin_memory", use_cuda)) and use_cuda
         self.net: Optional[nn.Module] = None
         self.scaler = StandardScaler()
         self._is_fitted = False
@@ -85,7 +103,21 @@ class NeuralUpliftModel(UpliftModel):
             torch.as_tensor(t, dtype=torch.float32).view(-1, 1),
             torch.as_tensor(y, dtype=torch.float32).view(-1, 1),
         )
-        return DataLoader(ds, batch_size=self.batch_size, shuffle=shuffle)
+        kwargs = {
+            "batch_size": self.batch_size,
+            "shuffle": shuffle,
+            "pin_memory": self.pin_memory,
+        }
+        if self.num_workers > 0:
+            kwargs["num_workers"] = self.num_workers
+            kwargs["persistent_workers"] = True
+        return DataLoader(ds, **kwargs)
+
+    def _to_device(self, *tensors: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        return tuple(
+            t.to(self.device, non_blocking=self.pin_memory)
+            for t in tensors
+        )
 
     def fit(self, X, T, Y, X_val=None, T_val=None, Y_val=None):
         torch.manual_seed(self.seed)
@@ -108,8 +140,10 @@ class NeuralUpliftModel(UpliftModel):
             x_tr, t_tr, y_tr = x, t, y
             x_va = t_va = y_va = None
 
+        configure_torch_gpu()
         self.net = self.build_network(x.shape[1]).to(self.device)
         opt = torch.optim.Adam(self.net.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        scaler = torch.amp.GradScaler("cuda", enabled=self.use_amp)
         train_loader = self._make_loader(x_tr, t_tr, y_tr, shuffle=True)
         val_loader = None
         if x_va is not None:
@@ -121,25 +155,23 @@ class NeuralUpliftModel(UpliftModel):
         for epoch in range(self.max_epochs):
             self.net.train()
             for xb, tb, yb in train_loader:
-                xb, tb, yb = xb.to(self.device), tb.to(self.device), yb.to(self.device)
-                opt.zero_grad()
-                loss, _ = self.training_loss({"features": xb, "treatment": tb, "outcome": yb})
-                loss.backward()
-                opt.step()
+                xb, tb, yb = self._to_device(xb, tb, yb)
+                opt.zero_grad(set_to_none=True)
+                with torch.autocast(device_type=self.device.type, enabled=self.use_amp):
+                    loss, _ = self.training_loss({"features": xb, "treatment": tb, "outcome": yb})
+                scaler.scale(loss).backward()
+                scaler.step(opt)
+                scaler.update()
 
-            if val_loader is not None:
-                val_loss = self._eval_loss(val_loader)
-                if val_loss < best_val - 1e-5:
-                    best_val = val_loss
-                    best_state = {k: v.detach().cpu().clone() for k, v in self.net.state_dict().items()}
-                    bad_epochs = 0
-                else:
-                    bad_epochs += 1
-                    if bad_epochs >= self.patience:
-                        break
-            else:
+            monitor_loss = self._eval_loss(val_loader if val_loader is not None else train_loader)
+            if monitor_loss < best_val - 1e-5:
+                best_val = monitor_loss
                 best_state = {k: v.detach().cpu().clone() for k, v in self.net.state_dict().items()}
-                best_val = float("nan")
+                bad_epochs = 0
+            else:
+                bad_epochs += 1
+                if bad_epochs >= self.patience:
+                    break
 
         if best_state is not None:
             self.net.load_state_dict(best_state)
@@ -154,8 +186,9 @@ class NeuralUpliftModel(UpliftModel):
         total, n = 0.0, 0
         with torch.no_grad():
             for xb, tb, yb in loader:
-                xb, tb, yb = xb.to(self.device), tb.to(self.device), yb.to(self.device)
-                loss, _ = self.training_loss({"features": xb, "treatment": tb, "outcome": yb})
+                xb, tb, yb = self._to_device(xb, tb, yb)
+                with torch.autocast(device_type=self.device.type, enabled=self.use_amp):
+                    loss, _ = self.training_loss({"features": xb, "treatment": tb, "outcome": yb})
                 total += loss.item() * len(xb)
                 n += len(xb)
         return total / max(n, 1)
@@ -168,10 +201,12 @@ class NeuralUpliftModel(UpliftModel):
         preds = []
         t0 = time.perf_counter()
         self.net.eval()
-        with torch.no_grad():
+        with torch.inference_mode():
             for xb, _, _ in loader:
-                out = self.predict_outputs(xb.to(self.device))
-                preds.append(out["cate_pred"].cpu().numpy())
+                xb = xb.to(self.device, non_blocking=self.pin_memory)
+                with torch.autocast(device_type=self.device.type, enabled=self.use_amp):
+                    out = self.predict_outputs(xb)
+                preds.append(out["cate_pred"].float().cpu().numpy())
         self.inference_time_s = time.perf_counter() - t0
         return np.concatenate(preds).ravel()
 

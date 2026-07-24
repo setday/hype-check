@@ -32,7 +32,7 @@ def _suggest_common(trial: optuna.Trial, base: dict) -> dict:
         "dropout": trial.suggest_float("dropout", 0.0, 0.5),
         "lr": trial.suggest_float("lr", 1e-4, 1e-2, log=True),
         "weight_decay": trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True),
-        "batch_size": trial.suggest_categorical("batch_size", [128, 256, 512]),
+        "batch_size": trial.suggest_categorical("batch_size", [256, 512, 1024, 2048]),
         "max_epochs": trial.suggest_int("max_epochs", 20, 80),
         "patience": trial.suggest_categorical("patience", [3, 5, 8]),
     })
@@ -60,11 +60,13 @@ def cv_qini_objective(
     Y: np.ndarray,
     split: SplitBundle,
     base_config: dict,
+    Y_eval: np.ndarray | None = None,
 ) -> float:
     """Optuna objective: mean validation Qini over shared 3-fold CV."""
     if model_key not in NEURAL_MODELS:
         raise KeyError(f"Unknown neural model '{model_key}'")
 
+    y_metric = Y if Y_eval is None else Y_eval
     params = suggest_params(trial, model_key, base_config)
     fold_qinis = []
 
@@ -75,7 +77,7 @@ def cv_qini_objective(
             X_val=X[fold_val], T_val=T[fold_val], Y_val=Y[fold_val],
         )
         cate = model.predict_cate(X[fold_val])
-        qini = compute_point_metrics(cate, Y[fold_val], T[fold_val])["qini"]
+        qini = compute_point_metrics(cate, y_metric[fold_val], T[fold_val])["qini"]
         fold_qinis.append(qini)
         trial.set_user_attr(f"fold_qini_{len(fold_qinis)-1}", qini)
 

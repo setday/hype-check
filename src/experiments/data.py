@@ -69,8 +69,10 @@ def load_protocol_arrays(
     data_root: Optional[Path] = None,
     cohort_limit: Optional[int] = None,
     cohort_seed: int = 20260715,
+    outcome_transform: Optional[str] = None,
+    outcome_transform_eps: float = 1e-3,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
-    """Return (X, T, Y, meta) for a named protocol dataset."""
+    """Return (X, T, Y_fit, meta). Y_fit may be transformed; meta['y_eval'] is raw Y."""
     if dataset not in DATASETS:
         raise KeyError(f"Unknown dataset '{dataset}'. Known: {sorted(DATASETS)}")
 
@@ -91,7 +93,10 @@ def load_protocol_arrays(
 
     X, feature_names = _encode_features(df, outcome)
     T = pd.to_numeric(df["T"], errors="coerce").fillna(0).to_numpy().astype(np.int8)
-    Y = pd.to_numeric(df[outcome], errors="coerce").fillna(0).to_numpy().astype(np.float32)
+    Y_raw = pd.to_numeric(df[outcome], errors="coerce").fillna(0).to_numpy().astype(np.float32)
+    from src.datasets.instance_transforms import transform_outcome_array
+
+    Y_fit = transform_outcome_array(Y_raw, outcome_transform, eps=outcome_transform_eps)
 
     meta = {
         "dataset": dataset,
@@ -102,12 +107,14 @@ def load_protocol_arrays(
         "task": cfg.get("task"),
         "cohort_limit": cohort_limit,
         "cohort_seed": cohort_seed,
+        "outcome_transform": outcome_transform or "identity",
+        "y_eval": Y_raw,
     }
     logger.info(
-        "Loaded %s: n=%d, d=%d, treat_share=%.3f, outcome=%s",
-        dataset, len(X), X.shape[1], T.mean(), outcome,
+        "Loaded %s: n=%d, d=%d, treat_share=%.3f, outcome=%s, transform=%s",
+        dataset, len(X), X.shape[1], T.mean(), outcome, meta["outcome_transform"],
     )
-    return X, T, Y, meta
+    return X, T, Y_fit, meta
 
 
 def split_cache_path(dataset: str, cohort_limit: Optional[int], cohort_seed: int, split_seed: int) -> Path:

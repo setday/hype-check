@@ -1,0 +1,24 @@
+# DataSphere Job config — export from VS Code or:
+#   datasphere project job execute -p bt1rnun041kpnonujvlj -c scripts/datasphere/neural_tune_gpu_job.yaml
+#
+# Project: bt1rnun041kpnonujvlj
+# Data already on cloud: /home/jupyter/datasets/data_A_cleaned
+
+name: hype-check-neural-gpu-150t
+desc: W1 neural uplift — 150 Optuna trials, 5 models, 5 datasets, W&B
+
+cmd: python3 scripts/datasphere/run_neural_tune_gpu_job.py
+
+env:
+  python: auto
+  vars:
+    HYPECHECK_DATA_ROOT: /home/jupyter/datasets/data_A_cleaned
+    TRANSFORMERS_NO_TF: "1"
+    USE_TF: "0"
+    OMP_NUM_THREADS: "8"
+    WANDB_RUN_NAME: neural-w1-gpu-150t
+    # WANDB_API_KEY: set in VS Code job UI or DataSphere Secrets (do not commit)
+    # WANDB_ENTITY: your-team
+
+cloud-instance-types:
+  - gt4i.1
